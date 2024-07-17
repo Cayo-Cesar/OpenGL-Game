@@ -19,9 +19,9 @@
 #define WIDTH 800
 #define HEIGHT 600
 #define PIPE_GAP 150
-#define PIPE_WIDTH 80
-#define GRAVITY 0.05f
-#define JUMP_FORCE -1.5f
+#define PIPE_RADIUS 40 // Metade do PIPE_WIDTH original
+#define GRAVITY 0.1f
+#define JUMP_FORCE -3.0f
 
 // Variáveis globais
 float birdY = HEIGHT / 2.0f;
@@ -73,7 +73,7 @@ void init() {
     // Inicializa os primeiros canos
     for (int i = 0; i < 3; i++) {
         Pipe pipe;
-        pipe.x = WIDTH + i * (PIPE_WIDTH + 200);
+        pipe.x = WIDTH + i * (PIPE_RADIUS * 2 + 200);
         pipe.height = rand() % (HEIGHT - PIPE_GAP);
         pipes.push_back(pipe);
     }
@@ -122,8 +122,8 @@ void display() {
 
         // Desenha os canos
         for (size_t i = 0; i < pipes.size(); i++) {
-            drawCylinder(pipes[i].x + PIPE_WIDTH / 2, pipes[i].height / 2, 0, PIPE_WIDTH / 2, pipes[i].height);
-            drawCylinder(pipes[i].x + PIPE_WIDTH / 2, (pipes[i].height + PIPE_GAP) + (HEIGHT - pipes[i].height - PIPE_GAP) / 2, 0, PIPE_WIDTH / 2, HEIGHT - pipes[i].height - PIPE_GAP);
+            drawCylinder(pipes[i].x + PIPE_RADIUS, pipes[i].height / 2, 0, PIPE_RADIUS, pipes[i].height);
+            drawCylinder(pipes[i].x + PIPE_RADIUS, (pipes[i].height + PIPE_GAP) + (HEIGHT - pipes[i].height - PIPE_GAP) / 2, 0, PIPE_RADIUS, HEIGHT - pipes[i].height - PIPE_GAP);
         }
 
         // Desenha a pontuação
@@ -150,7 +150,7 @@ void update(int value) {
         }
 
         // Remove canos fora da tela e adiciona novos canos
-        if (!pipes.empty() && pipes[0].x + PIPE_WIDTH < 0) {
+        if (!pipes.empty() && pipes[0].x + PIPE_RADIUS * 2 < 0) {
             pipes.erase(pipes.begin());
 
             Pipe newPipe;
@@ -163,8 +163,18 @@ void update(int value) {
 
         // Verifica colisão
         for (size_t i = 0; i < pipes.size(); i++) {
-            if (100 + 10 > pipes[i].x && 100 - 10 < pipes[i].x + PIPE_WIDTH) {
-                if (birdY - 10 < pipes[i].height || birdY + 10 > pipes[i].height + PIPE_GAP) {
+            float birdLeft = 100 - 1;
+            float birdRight = 100 + 1;
+            float birdTop = birdY + 1;
+            float birdBottom = birdY - 1;
+
+            float pipeLeft = pipes[i].x;
+            float pipeRight = pipes[i].x + PIPE_RADIUS * 2;
+            float pipeTop = pipes[i].height;
+            float pipeBottom = pipes[i].height + PIPE_GAP;
+
+            if (birdRight > pipeLeft && birdLeft < pipeRight) {
+                if (birdTop > pipeBottom || birdBottom < pipeTop) {
                     gameRunning = false;
                 }
             }
