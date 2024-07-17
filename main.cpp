@@ -13,6 +13,7 @@
 #include <cstdio>
 #include <cmath>
 #include <ctime>
+#include <vector>
 
 // Constantes
 #define WIDTH 800
@@ -33,7 +34,7 @@ struct Pipe {
     float height;
 };
 
-Pipe pipes[3];
+std::vector<Pipe> pipes;
 
 // Função para desenhar texto
 void drawText(float x, float y, const char* text) {
@@ -47,29 +48,82 @@ void drawText(float x, float y, const char* text) {
 // Função de inicialização
 void init() {
     glClearColor(0.5f, 0.8f, 1.0f, 1.0f); // Fundo azul claro
-    glOrtho(0.0, WIDTH, HEIGHT, 0.0, -1.0, 1.0);
+    glEnable(GL_DEPTH_TEST);
+    glEnable(GL_LIGHTING);
+    glEnable(GL_LIGHT0);
+
+    // Configuração da luz
+    GLfloat lightPos[] = { 400.0f, 300.0f, 1000.0f, 1.0f };
+    GLfloat lightAmbient[] = { 0.2f, 0.2f, 0.2f, 1.0f };
+    GLfloat lightDiffuse[] = { 0.8f, 0.8f, 0.8f, 1.0f };
+    GLfloat lightSpecular[] = { 1.0f, 1.0f, 1.0f, 1.0f };
+
+    glLightfv(GL_LIGHT0, GL_POSITION, lightPos);
+    glLightfv(GL_LIGHT0, GL_AMBIENT, lightAmbient);
+    glLightfv(GL_LIGHT0, GL_DIFFUSE, lightDiffuse);
+    glLightfv(GL_LIGHT0, GL_SPECULAR, lightSpecular);
+
+    glMatrixMode(GL_PROJECTION);
+    gluPerspective(45.0, (double)WIDTH / (double)HEIGHT, 1.0, 2000.0);
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+    gluLookAt(400.0, 300.0, 1000.0, 400.0, 300.0, 0.0, 0.0, 1.0, 0.0);
     srand(time(0));
 
+    // Inicializa os primeiros canos
     for (int i = 0; i < 3; i++) {
-        pipes[i].x = WIDTH + i * (PIPE_WIDTH + 200);
-        pipes[i].height = rand() % (HEIGHT - PIPE_GAP);
+        Pipe pipe;
+        pipe.x = WIDTH + i * (PIPE_WIDTH + 200);
+        pipe.height = rand() % (HEIGHT - PIPE_GAP);
+        pipes.push_back(pipe);
     }
+}
+
+// Função para desenhar um cilindro 3D
+void drawCylinder(float x, float y, float z, float radius, float height) {
+    GLUquadric* quad = gluNewQuadric();
+    glPushMatrix();
+    glTranslatef(x, y, z);
+    glRotatef(-90.0, 1.0, 0.0, 0.0);
+    gluCylinder(quad, radius, radius, height, 32, 32);
+    glPopMatrix();
+    gluDeleteQuadric(quad);
 }
 
 // Função de display
 void display() {
-    glClear(GL_COLOR_BUFFER_BIT);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     if (gameRunning) {
+        // Material do pássaro
+        GLfloat birdAmbient[] = { 1.0f, 1.0f, 0.0f, 1.0f };
+        GLfloat birdDiffuse[] = { 1.0f, 1.0f, 0.0f, 1.0f };
+        GLfloat birdSpecular[] = { 1.0f, 1.0f, 1.0f, 1.0f };
+        GLfloat birdShininess[] = { 50.0f };
+
+        glMaterialfv(GL_FRONT, GL_AMBIENT, birdAmbient);
+        glMaterialfv(GL_FRONT, GL_DIFFUSE, birdDiffuse);
+        glMaterialfv(GL_FRONT, GL_SPECULAR, birdSpecular);
+        glMaterialfv(GL_FRONT, GL_SHININESS, birdShininess);
+
         // Desenha o pássaro
-        glColor3f(1.0f, 1.0f, 0.0f);
-        glRectf(100, birdY - 10, 120, birdY + 10);
+        drawCylinder(100, birdY, 0, 10, 20);
+
+        // Material dos canos
+        GLfloat pipeAmbient[] = { 0.0f, 1.0f, 0.0f, 1.0f };
+        GLfloat pipeDiffuse[] = { 0.0f, 1.0f, 0.0f, 1.0f };
+        GLfloat pipeSpecular[] = { 1.0f, 1.0f, 1.0f, 1.0f };
+        GLfloat pipeShininess[] = { 50.0f };
+
+        glMaterialfv(GL_FRONT, GL_AMBIENT, pipeAmbient);
+        glMaterialfv(GL_FRONT, GL_DIFFUSE, pipeDiffuse);
+        glMaterialfv(GL_FRONT, GL_SPECULAR, pipeSpecular);
+        glMaterialfv(GL_FRONT, GL_SHININESS, pipeShininess);
 
         // Desenha os canos
-        glColor3f(0.0f, 1.0f, 0.0f);
-        for (int i = 0; i < 3; i++) {
-            glRectf(pipes[i].x, 0, pipes[i].x + PIPE_WIDTH, pipes[i].height);
-            glRectf(pipes[i].x, pipes[i].height + PIPE_GAP, pipes[i].x + PIPE_WIDTH, HEIGHT);
+        for (size_t i = 0; i < pipes.size(); i++) {
+            drawCylinder(pipes[i].x + PIPE_WIDTH / 2, pipes[i].height / 2, 0, PIPE_WIDTH / 2, pipes[i].height);
+            drawCylinder(pipes[i].x + PIPE_WIDTH / 2, (pipes[i].height + PIPE_GAP) + (HEIGHT - pipes[i].height - PIPE_GAP) / 2, 0, PIPE_WIDTH / 2, HEIGHT - pipes[i].height - PIPE_GAP);
         }
 
         // Desenha a pontuação
@@ -91,18 +145,25 @@ void update(int value) {
         birdVelocity += GRAVITY;
 
         // Atualiza os canos
-        for (int i = 0; i < 3; i++) {
+        for (size_t i = 0; i < pipes.size(); i++) {
             pipes[i].x -= 3.0f;
-            if (pipes[i].x + PIPE_WIDTH < 0) {
-                pipes[i].x = WIDTH;
-                pipes[i].height = rand() % (HEIGHT - PIPE_GAP);
-                score++;
-            }
+        }
+
+        // Remove canos fora da tela e adiciona novos canos
+        if (!pipes.empty() && pipes[0].x + PIPE_WIDTH < 0) {
+            pipes.erase(pipes.begin());
+
+            Pipe newPipe;
+            newPipe.x = WIDTH;
+            newPipe.height = rand() % (HEIGHT - PIPE_GAP);
+            pipes.push_back(newPipe);
+
+            score++;
         }
 
         // Verifica colisão
-        for (int i = 0; i < 3; i++) {
-            if (100 + 20 > pipes[i].x && 100 < pipes[i].x + PIPE_WIDTH) {
+        for (size_t i = 0; i < pipes.size(); i++) {
+            if (100 + 10 > pipes[i].x && 100 - 10 < pipes[i].x + PIPE_WIDTH) {
                 if (birdY - 10 < pipes[i].height || birdY + 10 > pipes[i].height + PIPE_GAP) {
                     gameRunning = false;
                 }
@@ -130,9 +191,9 @@ void keyboard(unsigned char key, int x, int y) {
 
 int main(int argc, char** argv) {
     glutInit(&argc, argv);
-    glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB);
+    glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
     glutInitWindowSize(WIDTH, HEIGHT);
-    glutCreateWindow("Flappy Bird");
+    glutCreateWindow("Flappy Bird 3D");
 
     init();
     glutDisplayFunc(display);

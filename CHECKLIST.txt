@@ -1,0 +1,10 @@
+CHECKLIST:
+
+3D
+Detectar Colisão
+Iluminação e Sombreamento
+Textura
+Visibilidade
+Animação
+IA
+Música
