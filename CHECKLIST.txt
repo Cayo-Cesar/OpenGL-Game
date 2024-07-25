@@ -2,9 +2,9 @@ CHECKLIST:
 
 3D
 Detectar Colisão
+IA
 Iluminação e Sombreamento
 Textura
 Visibilidade
 Animação
-IA
 Música
