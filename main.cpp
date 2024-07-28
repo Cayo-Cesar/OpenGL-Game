@@ -15,6 +15,7 @@
 #include <ctime>
 
 // Constantes
+
 #define WIDTH 800
 #define HEIGHT 600
 #define PIPE_GAP 150
