@@ -51,6 +51,7 @@ bool gameOver = false; // Flag para indicar o fim do jogo
 int score = 0; // PontuaÃ§Ã£o do jogador
 
 GLuint pipeTexture;
+GLuint birdTexture;
 
 // Flag para verificar se o pÃ¡ssaro passou por um cano
 bool passedPipe[PIPE_COUNT] = { false };
@@ -128,6 +129,7 @@ void init_glut(const char *window_name, int argc, char** argv) {
     glutTimerFunc(16, timer, 0);
     
 	pipeTexture = loadTexture("canos.png");
+	birdTexture = loadTexture("flappy_bird.png");
 	
     glEnable(GL_DEPTH_TEST);
     glClearColor(0.5f, 0.7f, 1.0f, 1.0f); // Lighter blue background
@@ -252,6 +254,78 @@ void draw_parallelepiped(float width, float height, float depth, bool invertText
     glDisable(GL_TEXTURE_2D);
 }
 
+void drawTexturedCube(float size, GLuint textureID) {
+    glBindTexture(GL_TEXTURE_2D, textureID);
+    glEnable(GL_TEXTURE_2D);
+
+    glBegin(GL_QUADS);
+
+    // Face frontal
+    glTexCoord2f(0.0f, 1.0f); 
+    glVertex3f(-size / 2, -size / 2, size / 2);
+    glTexCoord2f(1.0f, 1.0f); 
+    glVertex3f(size / 2, -size / 2, size / 2);
+    glTexCoord2f(1.0f, 0.0f);
+    glVertex3f(size / 2, size / 2, size / 2);
+    glTexCoord2f(0.0f, 0.0f);
+    glVertex3f(-size / 2, size / 2, size / 2);
+
+    // Face traseira
+    glTexCoord2f(0.0f, 1.0f); 
+    glVertex3f(-size / 2, -size / 2, -size / 2);
+    glTexCoord2f(1.0f, 1.0f); 
+    glVertex3f(size / 2, -size / 2, -size / 2);
+    glTexCoord2f(1.0f, 0.0f);
+    glVertex3f(size / 2, size / 2, -size / 2);
+    glTexCoord2f(0.0f, 0.0f);
+    glVertex3f(-size / 2, size / 2, -size / 2);
+
+    // Face esquerda
+    glTexCoord2f(0.0f, 1.0f); 
+    glVertex3f(-size / 2, -size / 2, -size / 2);
+    glTexCoord2f(1.0f, 1.0f); 
+    glVertex3f(-size / 2, -size / 2, size / 2);
+    glTexCoord2f(1.0f, 0.0f);
+    glVertex3f(-size / 2, size / 2, size / 2);
+    glTexCoord2f(0.0f, 0.0f);
+    glVertex3f(-size / 2, size / 2, -size / 2);
+
+    // Face direita
+    glTexCoord2f(0.0f, 1.0f);
+    glVertex3f(size / 2, -size / 2, -size / 2);
+    glTexCoord2f(1.0f, 1.0f); 
+    glVertex3f(size / 2, -size / 2, size / 2);
+    glTexCoord2f(1.0f, 0.0f);
+    glVertex3f(size / 2, size / 2, size / 2);
+    glTexCoord2f(0.0f, 0.0f);
+    glVertex3f(size / 2, size / 2, -size / 2);
+
+    // Face superior
+    glTexCoord2f(0.0f, 1.0f); 
+    glVertex3f(-size / 2, size / 2, -size / 2);
+    glTexCoord2f(1.0f, 1.0f); 
+    glVertex3f(size / 2, size / 2, -size / 2);
+    glTexCoord2f(1.0f, 0.0f);
+    glVertex3f(size / 2, size / 2, size / 2);
+    glTexCoord2f(0.0f, 0.0f);
+    glVertex3f(-size / 2, size / 2, size / 2);
+
+    // Face inferior
+    glTexCoord2f(0.0f, 1.0f); 
+    glVertex3f(-size / 2, -size / 2, -size / 2);
+    glTexCoord2f(1.0f, 1.0f); 
+    glVertex3f(size / 2, -size / 2, -size / 2);
+    glTexCoord2f(1.0f, 0.0f);
+    glVertex3f(size / 2, -size / 2, size / 2);
+    glTexCoord2f(0.0f, 0.0f);
+    glVertex3f(-size / 2, -size / 2, size / 2);
+
+    glEnd();
+
+    glDisable(GL_TEXTURE_2D);
+}
+
+
 
 
 void drawText(float x, float y, const char* text) {
@@ -287,25 +361,16 @@ void display(void) {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glLoadIdentity();
 
-
-    // Ajusta a posição da câmera para a cena do jogo
     glTranslatef(0.0f, 0.0f, -3.0f);
 
     if (!gameOver) {
-        // Desenha o pássaro (cubo amarelo)
+        // Desenha o pássaro com textura
         glPushMatrix();
         glTranslatef(birdX, birdY, 0.0f);
-
-        // Configuração do material para o pássaro
-        GLfloat materialDiffuse[] = {1.0f, 1.0f, 0.0f, 1.0f}; // Amarelo para o pássaro
-        GLfloat materialSpecular[] = {1.0f, 1.0f, 0.0f, 1.0f}; // Amarelo para o pássaro
-        glMaterialfv(GL_FRONT, GL_DIFFUSE, materialDiffuse);
-        glMaterialfv(GL_FRONT, GL_SPECULAR, materialSpecular);
-
-        glutSolidCube(birdSize);
+        drawTexturedCube(birdSize, birdTexture); // Usa a textura do pássaro
         glPopMatrix();
 
-        // Desenha os canos (paralelepípedos verdes)
+        // Desenha os canos 
 		for (int i = 0; i < PIPE_COUNT; ++i) {
 		    // Cano superior
 		    glPushMatrix();
