@@ -28,6 +28,10 @@
 #define GRAVITY 0.001f  // Gravidade
 #define FLAP_STRENGTH 0.04f  // For√ßa do flap
 
+//carregar
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
+
 float birdY = 0.0f; // Posi√ß√£o inicial do p√°ssaro
 float birdVelocity = 0.0f; // Velocidade inicial do p√°ssaro
 float birdSize = 0.1f; // Tamanho do p√°ssaro
@@ -56,6 +60,7 @@ bool check_collision(float px, float py, float psize, float ex, float ey, float 
 
 // Fun√ß√£o principal
 int main(int argc, char** argv) {
+	
     // Inicializa a semente do gerador de n√∫meros aleat√≥rios
     srand(static_cast<unsigned>(time(0)));
 
@@ -88,43 +93,88 @@ void init_glut(const char *window_name, int argc, char** argv) {
 
     glEnable(GL_DEPTH_TEST);
     glClearColor(0.5f, 0.7f, 1.0f, 1.0f); // Lighter blue background
+
+    // ConfiguraÁ„o da iluminaÁ„o
+    glEnable(GL_LIGHTING);
+    glEnable(GL_LIGHT0);
+
+    // ConfiguraÁ„o da luz ambiente
+    GLfloat ambientLight[] = {0.3f, 0.3f, 0.3f, 1.0f};
+    glLightfv(GL_LIGHT0, GL_AMBIENT, ambientLight);
+
+    // ConfiguraÁ„o da luz difusa
+    GLfloat diffuseLight[] = {0.7f, 0.7f, 0.7f, 1.0f};
+    glLightfv(GL_LIGHT0, GL_DIFFUSE, diffuseLight);
+
+    // ConfiguraÁ„o da luz especular
+    GLfloat specularLight[] = {1.0f, 1.0f, 1.0f, 1.0f};
+    glLightfv(GL_LIGHT0, GL_SPECULAR, specularLight);
+
+    // ConfiguraÁ„o da posiÁ„o da luz
+    GLfloat lightPosition[] = {1.0f, 1.0f, 1.0f, 0.0f}; // Luz direcionada
+    glLightfv(GL_LIGHT0, GL_POSITION, lightPosition);
+
+    // Ativa a suavizaÁ„o de sombras
+    glShadeModel(GL_SMOOTH);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glEnable(GL_LIGHTING);
+    glEnable(GL_LIGHT0);
 }
+
 
 // Fun√ß√£o para desenhar um paralelep√≠pedo
 void draw_parallelepiped(float width, float height, float depth) {
+    // ConfiguraÁ„o do material para os canos
+    GLfloat materialAmbient[] = {0.1f, 0.5f, 0.0f, 1.0f}; // Verde suave para a luz ambiente
+    GLfloat materialDiffuse[] = {0.0f, 0.8f, 0.0f, 1.0f}; // Verde para a luz difusa
+    GLfloat materialSpecular[] = {0.0f, 0.3f, 0.0f, 1.0f}; // Verde suave para o brilho especular
+    GLfloat materialShininess[] = {20.0f}; // Brilho especular mais alto para suavizar sombras
+
+    glMaterialfv(GL_FRONT, GL_AMBIENT, materialAmbient);
+    glMaterialfv(GL_FRONT, GL_DIFFUSE, materialDiffuse);
+    glMaterialfv(GL_FRONT, GL_SPECULAR, materialSpecular);
+    glMaterialfv(GL_FRONT, GL_SHININESS, materialShininess);
+
     glBegin(GL_QUADS);
 
     // Front face
+    glNormal3f(0.0f, 0.0f, 1.0f);
     glVertex3f(-width / 2, -height / 2, depth / 2);
     glVertex3f(width / 2, -height / 2, depth / 2);
     glVertex3f(width / 2, height / 2, depth / 2);
     glVertex3f(-width / 2, height / 2, depth / 2);
 
     // Back face
+    glNormal3f(0.0f, 0.0f, -1.0f);
     glVertex3f(-width / 2, -height / 2, -depth / 2);
     glVertex3f(width / 2, -height / 2, -depth / 2);
     glVertex3f(width / 2, height / 2, -depth / 2);
     glVertex3f(-width / 2, height / 2, -depth / 2);
 
     // Left face
+    glNormal3f(-1.0f, 0.0f, 0.0f);
     glVertex3f(-width / 2, -height / 2, -depth / 2);
     glVertex3f(-width / 2, -height / 2, depth / 2);
     glVertex3f(-width / 2, height / 2, depth / 2);
     glVertex3f(-width / 2, height / 2, -depth / 2);
 
     // Right face
+    glNormal3f(1.0f, 0.0f, 0.0f);
     glVertex3f(width / 2, -height / 2, -depth / 2);
     glVertex3f(width / 2, -height / 2, depth / 2);
     glVertex3f(width / 2, height / 2, depth / 2);
     glVertex3f(width / 2, height / 2, -depth / 2);
 
     // Top face
+    glNormal3f(0.0f, 1.0f, 0.0f);
     glVertex3f(-width / 2, height / 2, -depth / 2);
     glVertex3f(width / 2, height / 2, -depth / 2);
     glVertex3f(width / 2, height / 2, depth / 2);
     glVertex3f(-width / 2, height / 2, depth / 2);
 
     // Bottom face
+    glNormal3f(0.0f, -1.0f, 0.0f);
     glVertex3f(-width / 2, -height / 2, -depth / 2);
     glVertex3f(width / 2, -height / 2, -depth / 2);
     glVertex3f(width / 2, -height / 2, depth / 2);
@@ -133,13 +183,16 @@ void draw_parallelepiped(float width, float height, float depth) {
     glEnd();
 }
 
+
 void drawText(float x, float y, const char* text) {
     glRasterPos2f(x, y);
+
     while (*text) {
         glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, *text);
         text++;
     }
 }
+
 
 // Fun√ß√£o para verificar colis√µes
 bool check_collision(float px, float py, float psize, float ex, float ey, float ewidth, float eheight, float edepth) {
@@ -167,55 +220,91 @@ void display(void) {
     glTranslatef(0.0f, 0.0f, -3.0f);
 
     if (!gameOver) {
-        // Desenha o p√°ssaro (cubo amarelo)
+        // Desenha o p·ssaro (cubo amarelo)
         glPushMatrix();
         glTranslatef(birdX, birdY, 0.0f);
-        glColor3f(1.0f, 1.0f, 0.0f);
+
+        // ConfiguraÁ„o do material para o p·ssaro
+        GLfloat materialDiffuse[] = {1.0f, 1.0f, 0.0f, 1.0f}; // Amarelo para o p·ssaro
+        GLfloat materialSpecular[] = {1.0f, 1.0f, 0.0f, 1.0f}; // Amarelo para o p·ssaro
+        glMaterialfv(GL_FRONT, GL_DIFFUSE, materialDiffuse);
+        glMaterialfv(GL_FRONT, GL_SPECULAR, materialSpecular);
+
         glutSolidCube(birdSize);
         glPopMatrix();
 
-        // Desenha os canos (paralelep√≠pedos verdes)
+        // Desenha os canos (paralelepÌpedos verdes)
         for (int i = 0; i < PIPE_COUNT; ++i) {
             // Cano superior
             glPushMatrix();
             glTranslatef(pipePositions[i], pipeGapY[i] + pipeGapSize + PIPE_HEIGHT / 2, 0.0f);
-            glColor3f(0.0f, 1.0f, 0.0f);
             draw_parallelepiped(PIPE_WIDTH, PIPE_HEIGHT, PIPE_DEPTH);
             glPopMatrix();
 
             // Cano inferior
             glPushMatrix();
             glTranslatef(pipePositions[i], pipeGapY[i] - pipeGapSize - PIPE_HEIGHT / 2, 0.0f);
-            glColor3f(0.0f, 1.0f, 0.0f);
             draw_parallelepiped(PIPE_WIDTH, PIPE_HEIGHT, PIPE_DEPTH);
             glPopMatrix();
         }
 
-        // Desenha a pontua√ß√£o
+        // Desenha a pontuaÁ„o
         glColor3f(0.0f, 0.0f, 0.0f);
         char scoreText[50];
         sprintf(scoreText, "Score: %d", score);
-        drawText(-1.0f, 1.0f, scoreText);  // Ajuste a posi√ß√£o conforme necess√°rio
+        glMatrixMode(GL_PROJECTION);
+        glPushMatrix();
+        glLoadIdentity();
+        gluOrtho2D(0.0, 1.0, 0.0, 1.0); // Coordenadas para a pontuaÁ„o
+        glMatrixMode(GL_MODELVIEW);
+        glPushMatrix();
+        glLoadIdentity();
+        glRasterPos2f(0.8f, 0.9f);  // PosiÁ„o no canto superior direito
+        drawText(0.0f, 0.0f, scoreText);
+        glPopMatrix();
+        glMatrixMode(GL_PROJECTION);
+        glPopMatrix();
+        glMatrixMode(GL_MODELVIEW);
     } else {
-        // Texto de Game Over
+        // Mensagem combinada de Game Over e reinÌcio
         glColor3f(0.0f, 0.0f, 0.0f);
-        const char* gameOverText = "Game Over! Press 'R' to Restart!";
-        int textWidth = 0;
+        char gameOverText[100];
+        sprintf(gameOverText, "Game Over! Pressione 'R' para reiniciar!");
 
-        // Calcula a largura do texto
-        for (const char* c = gameOverText; *c; ++c) {
-            textWidth += glutBitmapWidth(GLUT_BITMAP_HELVETICA_18, *c);
+        // ConfiguraÁ„o de projeÁ„o para centralizar o texto
+        glMatrixMode(GL_PROJECTION);
+        glPushMatrix();
+        glLoadIdentity();
+        gluOrtho2D(0.0, 1.0, 0.0, 1.0); // Coordenadas de projeÁ„o
+        glMatrixMode(GL_MODELVIEW);
+        glPushMatrix();
+        glLoadIdentity();
+
+        // Centraliza o texto
+        float textWidth = 0.0f;
+        const char* tempText = gameOverText;
+        while (*tempText) {
+            textWidth += glutBitmapWidth(GLUT_BITMAP_HELVETICA_18, *tempText);
+            tempText++;
         }
 
-        // Centraliza o texto horizontalmente
-        float x = (800 - textWidth) / 2.0f;
-        float y = 300; // Ajuste a posi√ß√£o conforme necess√°rio
+        float centerX = 0.5f; // Centraliza horizontalmente
+        float centerY = 0.5f; // Centraliza verticalmente
 
-        drawText(x, y, gameOverText);
+        glRasterPos2f(centerX - textWidth / 2 / 800.0f, centerY);  // Ajuste de acordo com a resoluÁ„o
+
+        drawText(0.0f, 0.0f, gameOverText);
+
+        glPopMatrix();
+        glMatrixMode(GL_PROJECTION);
+        glPopMatrix();
+        glMatrixMode(GL_MODELVIEW);
     }
 
     glutSwapBuffers();
 }
+
+
 
 // Fun√ß√£o para redimensionar a janela
 void reshape(int w, int h) {
@@ -231,9 +320,9 @@ void timer(int value) {
         birdVelocity -= GRAVITY;
         birdY += birdVelocity;
 
-        // Atualiza a posi√ß√£o horizontal do p√°ssaro
+        // Atualiza a posiÁ„o horizontal do p·ssaro
         for (int i = 0; i < PIPE_COUNT; ++i) {
-            pipePositions[i] -= 0.05f; // Atualizado para novo PIPE_SPACING
+            pipePositions[i] -= 0.025f; // Velocidade do cano reduzida
 
             // Verifica se o cano saiu da tela
             if (pipePositions[i] < -3.0f) { // Atualizado para novo PIPE_SPACING
@@ -242,16 +331,16 @@ void timer(int value) {
                 passedPipe[i] = false; // Reset flag
             }
 
-            // Verifica se o p√°ssaro passou pelo cano
+            // Verifica se o p·ssaro passou pelo cano
             for (int j = 0; j < PIPE_COUNT; ++j) {
-                // Verifica se o p√°ssaro est√° na mesma posi√ß√£o horizontal que o cano
+                // Verifica se o p·ssaro est· na mesma posiÁ„o horizontal que o cano
                 if (pipePositions[j] < birdX + birdSize / 2 && pipePositions[j] > birdX - birdSize / 2) {
-                    // Verifica colis√£o com a parte superior do cano
+                    // Verifica colis„o com a parte superior do cano
                     if (check_collision(birdX, birdY, birdSize, pipePositions[j], pipeGapY[j] + pipeGapSize + PIPE_HEIGHT / 2, PIPE_WIDTH, PIPE_HEIGHT, PIPE_DEPTH)) {
                         gameOver = true;
                         break;
                     }
-                    // Verifica colis√£o com a parte inferior do cano
+                    // Verifica colis„o com a parte inferior do cano
                     if (check_collision(birdX, birdY, birdSize, pipePositions[j], pipeGapY[j] - pipeGapSize - PIPE_HEIGHT / 2, PIPE_WIDTH, PIPE_HEIGHT, PIPE_DEPTH)) {
                         gameOver = true;
                         break;
@@ -259,14 +348,14 @@ void timer(int value) {
                 }
             }
 
-            // Incrementa o score se o p√°ssaro passou pelo cano
+            // Incrementa o score se o p·ssaro passou pelo cano
             if (!passedPipe[i] && pipePositions[i] < birdX - birdSize / 2) {
                 passedPipe[i] = true;
                 score++;
             }
         }
 
-        // Verifica se o p√°ssaro saiu da tela
+        // Verifica se o p·ssaro saiu da tela
         if (birdY - birdSize / 2 < -1.5f || birdY + birdSize / 2 > 1.5f) {
             gameOver = true;
         }
@@ -275,6 +364,7 @@ void timer(int value) {
     glutPostRedisplay();
     glutTimerFunc(16, timer, 0);
 }
+
 
 // Fun√ß√£o para tratar eventos do teclado
 void keyboard(unsigned char key, int x, int y) {
