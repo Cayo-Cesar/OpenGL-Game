@@ -14,6 +14,11 @@
     #include <GL/glu.h>
 #endif
 
+// Definição condicional para GL_CLAMP_TO_EDGE
+#ifndef GL_CLAMP_TO_EDGE
+    #define GL_CLAMP_TO_EDGE 0x812F
+#endif
+
 #include <cstdio>
 #include <cstdlib>
 #include <cmath>
@@ -45,6 +50,8 @@ bool gameOver = false; // Flag para indicar o fim do jogo
 
 int score = 0; // PontuaÃ§Ã£o do jogador
 
+GLuint pipeTexture;
+
 // Flag para verificar se o pÃ¡ssaro passou por um cano
 bool passedPipe[PIPE_COUNT] = { false };
 
@@ -58,13 +65,35 @@ void resetGame(void);
 void draw_parallelepiped(float width, float height, float depth);  // Function added
 bool check_collision(float px, float py, float psize, float ex, float ey, float ewidth, float eheight, float edepth); // Function added
 
+GLuint loadTexture(const char* filename) {
+    GLuint textureID;
+    int width, height, nrChannels;
+    unsigned char* data = stbi_load(filename, &width, &height, &nrChannels, 0);
+
+    if (!data) {
+        fprintf(stderr, "Failed to load texture\n");
+        return 0;
+    }
+
+    glGenTextures(1, &textureID);
+    glBindTexture(GL_TEXTURE_2D, textureID);
+
+    // Configura a textura
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE); // Usando GL_CLAMP_TO_EDGE
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE); // Usando GL_CLAMP_TO_EDGE
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+    stbi_image_free(data);
+    return textureID;
+}
 // FunÃ§Ã£o principal
 int main(int argc, char** argv) {
-	
-    // Inicializa a semente do gerador de nÃºmeros aleatÃ³rios
+    // Inicializa a semente do gerador de números aleatórios
     srand(static_cast<unsigned>(time(0)));
 
-    // Inicializa as posiÃ§Ãµes dos canos
+    // Inicializa as posições dos canos
     for (int i = 0; i < PIPE_COUNT; ++i) {
         pipePositions[i] = i * PIPE_SPACING + 1.0f;
         pipeGapY[i] = ((rand() % 100) / 100.0f) * 2.0f - 1.0f;
@@ -73,10 +102,17 @@ int main(int argc, char** argv) {
 
     // Inicializa o GLUT
     init_glut("3D Flappy Bird", argc, argv);
+
+    // Carrega a textura dos canos
+   
+
     glutMainLoop();
 
     return EXIT_SUCCESS;
 }
+
+
+
 
 // FunÃ§Ã£o para inicializar o GLUT
 void init_glut(const char *window_name, int argc, char** argv) {
@@ -85,12 +121,14 @@ void init_glut(const char *window_name, int argc, char** argv) {
     glutInitWindowSize(800, 600);
     glutInitWindowPosition(100, 100);
     glutCreateWindow(window_name);
-
+ 
     glutKeyboardFunc(keyboard);
     glutDisplayFunc(display);
     glutReshapeFunc(reshape);
     glutTimerFunc(16, timer, 0);
-
+    
+	pipeTexture = loadTexture("canos.png");
+	
     glEnable(GL_DEPTH_TEST);
     glClearColor(0.5f, 0.7f, 1.0f, 1.0f); // Lighter blue background
 
@@ -124,7 +162,11 @@ void init_glut(const char *window_name, int argc, char** argv) {
 
 
 // FunÃ§Ã£o para desenhar um paralelepÃ­pedo
-void draw_parallelepiped(float width, float height, float depth) {
+void draw_parallelepiped(float width, float height, float depth, bool invertTexture = false) {
+    // Ativa a textura
+    glBindTexture(GL_TEXTURE_2D, pipeTexture);
+    glEnable(GL_TEXTURE_2D);
+
     // Configuração do material para os canos
     GLfloat materialAmbient[] = {0.1f, 0.5f, 0.0f, 1.0f}; // Verde suave para a luz ambiente
     GLfloat materialDiffuse[] = {0.0f, 0.8f, 0.0f, 1.0f}; // Verde para a luz difusa
@@ -140,48 +182,76 @@ void draw_parallelepiped(float width, float height, float depth) {
 
     // Front face
     glNormal3f(0.0f, 0.0f, 1.0f);
+    glTexCoord2f(0.0f, invertTexture ? 1.0f : 0.0f);
     glVertex3f(-width / 2, -height / 2, depth / 2);
+    glTexCoord2f(1.0f, invertTexture ? 1.0f : 0.0f);
     glVertex3f(width / 2, -height / 2, depth / 2);
+    glTexCoord2f(1.0f, invertTexture ? 0.0f : 1.0f);
     glVertex3f(width / 2, height / 2, depth / 2);
+    glTexCoord2f(0.0f, invertTexture ? 0.0f : 1.0f);
     glVertex3f(-width / 2, height / 2, depth / 2);
 
     // Back face
     glNormal3f(0.0f, 0.0f, -1.0f);
+    glTexCoord2f(0.0f, invertTexture ? 1.0f : 0.0f);
     glVertex3f(-width / 2, -height / 2, -depth / 2);
+    glTexCoord2f(1.0f, invertTexture ? 1.0f : 0.0f);
     glVertex3f(width / 2, -height / 2, -depth / 2);
+    glTexCoord2f(1.0f, invertTexture ? 0.0f : 1.0f);
     glVertex3f(width / 2, height / 2, -depth / 2);
+    glTexCoord2f(0.0f, invertTexture ? 0.0f : 1.0f);
     glVertex3f(-width / 2, height / 2, -depth / 2);
 
     // Left face
     glNormal3f(-1.0f, 0.0f, 0.0f);
+    glTexCoord2f(0.0f, invertTexture ? 1.0f : 0.0f);
     glVertex3f(-width / 2, -height / 2, -depth / 2);
+    glTexCoord2f(1.0f, invertTexture ? 1.0f : 0.0f);
     glVertex3f(-width / 2, -height / 2, depth / 2);
+    glTexCoord2f(1.0f, invertTexture ? 0.0f : 1.0f);
     glVertex3f(-width / 2, height / 2, depth / 2);
+    glTexCoord2f(0.0f, invertTexture ? 0.0f : 1.0f);
     glVertex3f(-width / 2, height / 2, -depth / 2);
 
     // Right face
     glNormal3f(1.0f, 0.0f, 0.0f);
+    glTexCoord2f(0.0f, invertTexture ? 1.0f : 0.0f);
     glVertex3f(width / 2, -height / 2, -depth / 2);
+    glTexCoord2f(1.0f, invertTexture ? 1.0f : 0.0f);
     glVertex3f(width / 2, -height / 2, depth / 2);
+    glTexCoord2f(1.0f, invertTexture ? 0.0f : 1.0f);
     glVertex3f(width / 2, height / 2, depth / 2);
+    glTexCoord2f(0.0f, invertTexture ? 0.0f : 1.0f);
     glVertex3f(width / 2, height / 2, -depth / 2);
 
     // Top face
     glNormal3f(0.0f, 1.0f, 0.0f);
+    glTexCoord2f(0.0f, invertTexture ? 1.0f : 0.0f);
     glVertex3f(-width / 2, height / 2, -depth / 2);
+    glTexCoord2f(1.0f, invertTexture ? 1.0f : 0.0f);
     glVertex3f(width / 2, height / 2, -depth / 2);
+    glTexCoord2f(1.0f, invertTexture ? 0.0f : 1.0f);
     glVertex3f(width / 2, height / 2, depth / 2);
+    glTexCoord2f(0.0f, invertTexture ? 0.0f : 1.0f);
     glVertex3f(-width / 2, height / 2, depth / 2);
 
     // Bottom face
     glNormal3f(0.0f, -1.0f, 0.0f);
+    glTexCoord2f(0.0f, invertTexture ? 1.0f : 0.0f);
     glVertex3f(-width / 2, -height / 2, -depth / 2);
+    glTexCoord2f(1.0f, invertTexture ? 1.0f : 0.0f);
     glVertex3f(width / 2, -height / 2, -depth / 2);
+    glTexCoord2f(1.0f, invertTexture ? 0.0f : 1.0f);
     glVertex3f(width / 2, -height / 2, depth / 2);
+    glTexCoord2f(0.0f, invertTexture ? 0.0f : 1.0f);
     glVertex3f(-width / 2, -height / 2, depth / 2);
 
     glEnd();
+
+    // Desativa a textura
+    glDisable(GL_TEXTURE_2D);
 }
+
 
 
 void drawText(float x, float y, const char* text) {
@@ -217,6 +287,8 @@ void display(void) {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glLoadIdentity();
 
+
+    // Ajusta a posição da câmera para a cena do jogo
     glTranslatef(0.0f, 0.0f, -3.0f);
 
     if (!gameOver) {
@@ -234,19 +306,19 @@ void display(void) {
         glPopMatrix();
 
         // Desenha os canos (paralelepípedos verdes)
-        for (int i = 0; i < PIPE_COUNT; ++i) {
-            // Cano superior
-            glPushMatrix();
-            glTranslatef(pipePositions[i], pipeGapY[i] + pipeGapSize + PIPE_HEIGHT / 2, 0.0f);
-            draw_parallelepiped(PIPE_WIDTH, PIPE_HEIGHT, PIPE_DEPTH);
-            glPopMatrix();
-
-            // Cano inferior
-            glPushMatrix();
-            glTranslatef(pipePositions[i], pipeGapY[i] - pipeGapSize - PIPE_HEIGHT / 2, 0.0f);
-            draw_parallelepiped(PIPE_WIDTH, PIPE_HEIGHT, PIPE_DEPTH);
-            glPopMatrix();
-        }
+		for (int i = 0; i < PIPE_COUNT; ++i) {
+		    // Cano superior
+		    glPushMatrix();
+		    glTranslatef(pipePositions[i], pipeGapY[i] + pipeGapSize + PIPE_HEIGHT / 2, 0.0f);
+		    draw_parallelepiped(PIPE_WIDTH, PIPE_HEIGHT, PIPE_DEPTH, false);
+		    glPopMatrix();
+		
+		    // Cano inferior
+		    glPushMatrix();
+		    glTranslatef(pipePositions[i], pipeGapY[i] - pipeGapSize - PIPE_HEIGHT / 2, 0.0f);
+		    draw_parallelepiped(PIPE_WIDTH, PIPE_HEIGHT, PIPE_DEPTH, true);
+		    glPopMatrix();
+		}
 
         // Desenha a pontuação
         glColor3f(0.0f, 0.0f, 0.0f);
@@ -303,7 +375,6 @@ void display(void) {
 
     glutSwapBuffers();
 }
-
 
 
 // FunÃ§Ã£o para redimensionar a janela
