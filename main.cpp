@@ -34,7 +34,7 @@
 #define GRAVITY 0.001f  // Gravidade
 #define FLAP_STRENGTH 0.04f  // For√ßa do flap
 
-//carregar
+//carregar textura
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
@@ -92,22 +92,7 @@ GLuint loadTexture(const char* filename) {
     return textureID;
 }
 
-void loadBackgroundTexture(const char* filename) {
-    int width, height, channels;
-    unsigned char* image = stbi_load(filename, &width, &height, &channels, STBI_rgb_alpha);
-    if (image) {
-        glGenTextures(1, &backgroundTexture);
-        glBindTexture(GL_TEXTURE_2D, backgroundTexture);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, image);
-        stbi_image_free(image);
-    } else {
-        std::cerr << "Erro ao carregar a textura de fundo." << std::endl;
-    }
-}
+
 
 // Fun√ß√£o principal
 int main(int argc, char** argv) {
@@ -146,10 +131,11 @@ void init_glut(const char *window_name, int argc, char** argv) {
     glutTimerFunc(16, timer, 0);
     
 	pipeTexture = loadTexture("canos.png");
+	backgroundTexture = loadTexture("bg.png");
 	//birdTexture = loadTexture("flappy_bird.png");
 
      // Carregar a textura do fundo
-    loadBackgroundTexture("bg.png");
+   
 	
     glEnable(GL_DEPTH_TEST);
     glClearColor(0.5f, 0.7f, 1.0f, 1.0f); // Lighter blue background
@@ -182,6 +168,36 @@ void init_glut(const char *window_name, int argc, char** argv) {
     //glEnable(GL_LIGHT0);
 }
 
+void draw_background_square() {
+    glPushAttrib(GL_ENABLE_BIT | GL_TEXTURE_BIT | GL_LIGHTING_BIT);
+    glDisable(GL_DEPTH_TEST); // Desativa o teste de profundidade para garantir que o quadrado seja desenhado atr·s de tudo
+    
+    glBindTexture(GL_TEXTURE_2D, backgroundTexture);
+    glEnable(GL_TEXTURE_2D);
+
+    // Configura o material para um brilho mais alto
+    GLfloat materialAmbient[] = {1.0f, 1.0f, 1.0f, 1.0f}; 
+    GLfloat materialDiffuse[] = {1.0f, 1.0f, 1.0f, 1.0f}; 
+    GLfloat materialSpecular[] = {1.0f, 1.0f, 1.0f, 1.0f}; // Intensidade m·xima do brilho especular
+    GLfloat materialShininess[] = {3.0f}; // Aumenta o brilho especular para o m·ximo
+
+    glMaterialfv(GL_FRONT, GL_AMBIENT, materialAmbient);
+    glMaterialfv(GL_FRONT, GL_DIFFUSE, materialDiffuse);
+    glMaterialfv(GL_FRONT, GL_SPECULAR, materialSpecular);
+    glMaterialfv(GL_FRONT, GL_SHININESS, materialShininess);
+
+    // Desenha um quadrado com a textura
+    glBegin(GL_QUADS);
+    glTexCoord2f(0.0f, 1.0f); glVertex3f(-1.0f, -0.8f, -1.0f); // VÈrtice inferior esquerdo ajustado
+    glTexCoord2f(1.0f, 1.0f); glVertex3f(1.0f, -0.8f, -1.0f); // VÈrtice inferior direito ajustado
+    glTexCoord2f(1.0f, 0.0f); glVertex3f(1.0f, 1.0f, -1.0f); // VÈrtice superior direito
+    glTexCoord2f(0.0f, 0.0f); glVertex3f(-1.0f, 1.0f, -1.0f); // VÈrtice superior esquerdo
+    glEnd();
+
+    glEnable(GL_DEPTH_TEST); // Reativa o teste de profundidade apÛs desenhar o fundo
+    
+    glPopAttrib();
+}
 
 void draw_parallelepiped(float width, float height, float depth, bool invertTexture = false) {
     // Salva o estado atual
@@ -274,6 +290,10 @@ void draw_parallelepiped(float width, float height, float depth, bool invertText
 
     glPopAttrib();
 }
+
+
+
+//antigo passaro
 
 // void drawTexturedCube(float size, GLuint textureID) {
 //     glBindTexture(GL_TEXTURE_2D, textureID);
@@ -472,27 +492,15 @@ void drawBird() {
     glPopMatrix();
 }
 
-void drawBackground() {
-    glBindTexture(GL_TEXTURE_2D, backgroundTexture);
-    glEnable(GL_TEXTURE_2D);
 
-    glBegin(GL_QUADS);
-        // Coordenadas do fundo
-        glTexCoord2f(0.0f, 0.0f); glVertex3f(-1.0f, -1.0f, 0.0f);
-        glTexCoord2f(1.0f, 0.0f); glVertex3f(1.0f, -1.0f, 0.0f);
-        glTexCoord2f(1.0f, 1.0f); glVertex3f(1.0f, 1.0f, 0.0f);
-        glTexCoord2f(0.0f, 1.0f); glVertex3f(-1.0f, 1.0f, 0.0f);
-    glEnd();
 
-    glDisable(GL_TEXTURE_2D);
-}
 
 void display(void) {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glLoadIdentity();
 
-    drawBackground(); // Desenha o fundo
-
+    //drawBackground(); // Desenha o fundo
+	draw_background_square();
     glTranslatef(0.0f, 0.0f, -3.0f);
 
     if (!gameOver) {
@@ -572,6 +580,8 @@ void display(void) {
 
     glutSwapBuffers();
 }
+
+
 
 // Fun√ß√£o para redimensionar a janela
 void reshape(int w, int h) {
