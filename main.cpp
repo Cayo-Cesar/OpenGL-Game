@@ -14,7 +14,7 @@
     #include <GL/glu.h>
 #endif
 
-// DefiniÁ„o condicional para GL_CLAMP_TO_EDGE
+// DefiniÔøΩÔøΩo condicional para GL_CLAMP_TO_EDGE
 #ifndef GL_CLAMP_TO_EDGE
     #define GL_CLAMP_TO_EDGE 0x812F
 #endif
@@ -23,6 +23,7 @@
 #include <cstdlib>
 #include <cmath>
 #include <ctime>
+#include <iostream>
 
 #define ESC 27  // Tecla ESC
 #define PIPE_COUNT 3 // N√∫mero de canos
@@ -52,6 +53,7 @@ int score = 0; // Pontua√ß√£o do jogador
 
 GLuint pipeTexture;
 GLuint birdTexture;
+GLuint backgroundTexture;
 
 // Flag para verificar se o p√°ssaro passou por um cano
 bool passedPipe[PIPE_COUNT] = { false };
@@ -89,12 +91,30 @@ GLuint loadTexture(const char* filename) {
     stbi_image_free(data);
     return textureID;
 }
+
+void loadBackgroundTexture(const char* filename) {
+    int width, height, channels;
+    unsigned char* image = stbi_load(filename, &width, &height, &channels, STBI_rgb_alpha);
+    if (image) {
+        glGenTextures(1, &backgroundTexture);
+        glBindTexture(GL_TEXTURE_2D, backgroundTexture);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, image);
+        stbi_image_free(image);
+    } else {
+        std::cerr << "Erro ao carregar a textura de fundo." << std::endl;
+    }
+}
+
 // Fun√ß√£o principal
 int main(int argc, char** argv) {
-    // Inicializa a semente do gerador de n˙meros aleatÛrios
+    // Inicializa a semente do gerador de nÔøΩmeros aleatÔøΩrios
     srand(static_cast<unsigned>(time(0)));
 
-    // Inicializa as posiÁıes dos canos
+    // Inicializa as posiÔøΩÔøΩes dos canos
     for (int i = 0; i < PIPE_COUNT; ++i) {
         pipePositions[i] = i * PIPE_SPACING + 1.0f;
         pipeGapY[i] = ((rand() % 100) / 100.0f) * 2.0f - 1.0f;
@@ -112,9 +132,6 @@ int main(int argc, char** argv) {
     return EXIT_SUCCESS;
 }
 
-
-
-
 // Fun√ß√£o para inicializar o GLUT
 void init_glut(const char *window_name, int argc, char** argv) {
     glutInit(&argc, argv);
@@ -129,47 +146,52 @@ void init_glut(const char *window_name, int argc, char** argv) {
     glutTimerFunc(16, timer, 0);
     
 	pipeTexture = loadTexture("canos.png");
-	birdTexture = loadTexture("flappy_bird.png");
+	//birdTexture = loadTexture("flappy_bird.png");
+
+     // Carregar a textura do fundo
+    loadBackgroundTexture("bg.png");
 	
     glEnable(GL_DEPTH_TEST);
     glClearColor(0.5f, 0.7f, 1.0f, 1.0f); // Lighter blue background
 
-    // ConfiguraÁ„o da iluminaÁ„o
+    // ConfiguraÔøΩÔøΩo da iluminaÔøΩÔøΩo
     glEnable(GL_LIGHTING);
     glEnable(GL_LIGHT0);
 
-    // ConfiguraÁ„o da luz ambiente
+    // ConfiguraÔøΩÔøΩo da luz ambiente
     GLfloat ambientLight[] = {0.3f, 0.3f, 0.3f, 1.0f};
     glLightfv(GL_LIGHT0, GL_AMBIENT, ambientLight);
 
-    // ConfiguraÁ„o da luz difusa
+    // ConfiguraÔøΩÔøΩo da luz difusa
     GLfloat diffuseLight[] = {0.7f, 0.7f, 0.7f, 1.0f};
     glLightfv(GL_LIGHT0, GL_DIFFUSE, diffuseLight);
 
-    // ConfiguraÁ„o da luz especular
+    // ConfiguraÔøΩÔøΩo da luz especular
     GLfloat specularLight[] = {1.0f, 1.0f, 1.0f, 1.0f};
     glLightfv(GL_LIGHT0, GL_SPECULAR, specularLight);
 
-    // ConfiguraÁ„o da posiÁ„o da luz
+    // ConfiguraÔøΩÔøΩo da posiÔøΩÔøΩo da luz
     GLfloat lightPosition[] = {1.0f, 1.0f, 1.0f, 0.0f}; // Luz direcionada
     glLightfv(GL_LIGHT0, GL_POSITION, lightPosition);
 
-    // Ativa a suavizaÁ„o de sombras
-    glShadeModel(GL_SMOOTH);
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    glEnable(GL_LIGHTING);
-    glEnable(GL_LIGHT0);
+    // Ativa a suavizaÔøΩÔøΩo de sombras
+    //glShadeModel(GL_SMOOTH);
+    //glEnable(GL_BLEND);
+    //glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    //glEnable(GL_LIGHTING);
+    //glEnable(GL_LIGHT0);
 }
 
 
-// Fun√ß√£o para desenhar um paralelep√≠pedo
 void draw_parallelepiped(float width, float height, float depth, bool invertTexture = false) {
+    // Salva o estado atual
+    glPushAttrib(GL_ENABLE_BIT | GL_TEXTURE_BIT | GL_LIGHTING_BIT);
+
     // Ativa a textura
     glBindTexture(GL_TEXTURE_2D, pipeTexture);
     glEnable(GL_TEXTURE_2D);
 
-    // ConfiguraÁ„o do material para os canos
+    // ConfiguraÔøΩÔøΩo do material para os canos
     GLfloat materialAmbient[] = {0.1f, 0.5f, 0.0f, 1.0f}; // Verde suave para a luz ambiente
     GLfloat materialDiffuse[] = {0.0f, 0.8f, 0.0f, 1.0f}; // Verde para a luz difusa
     GLfloat materialSpecular[] = {0.0f, 0.3f, 0.0f, 1.0f}; // Verde suave para o brilho especular
@@ -250,83 +272,79 @@ void draw_parallelepiped(float width, float height, float depth, bool invertText
 
     glEnd();
 
-    // Desativa a textura
-    glDisable(GL_TEXTURE_2D);
+    glPopAttrib();
 }
 
-void drawTexturedCube(float size, GLuint textureID) {
-    glBindTexture(GL_TEXTURE_2D, textureID);
-    glEnable(GL_TEXTURE_2D);
+// void drawTexturedCube(float size, GLuint textureID) {
+//     glBindTexture(GL_TEXTURE_2D, textureID);
+//     glEnable(GL_TEXTURE_2D);
 
-    glBegin(GL_QUADS);
+//     glBegin(GL_QUADS);
 
-    // Face frontal
-    glTexCoord2f(0.0f, 1.0f); 
-    glVertex3f(-size / 2, -size / 2, size / 2);
-    glTexCoord2f(1.0f, 1.0f); 
-    glVertex3f(size / 2, -size / 2, size / 2);
-    glTexCoord2f(1.0f, 0.0f);
-    glVertex3f(size / 2, size / 2, size / 2);
-    glTexCoord2f(0.0f, 0.0f);
-    glVertex3f(-size / 2, size / 2, size / 2);
+//     // Face frontal
+//     glTexCoord2f(0.0f, 1.0f); 
+//     glVertex3f(-size / 2, -size / 2, size / 2);
+//     glTexCoord2f(1.0f, 1.0f); 
+//     glVertex3f(size / 2, -size / 2, size / 2);
+//     glTexCoord2f(1.0f, 0.0f);
+//     glVertex3f(size / 2, size / 2, size / 2);
+//     glTexCoord2f(0.0f, 0.0f);
+//     glVertex3f(-size / 2, size / 2, size / 2);
 
-    // Face traseira
-    glTexCoord2f(0.0f, 1.0f); 
-    glVertex3f(-size / 2, -size / 2, -size / 2);
-    glTexCoord2f(1.0f, 1.0f); 
-    glVertex3f(size / 2, -size / 2, -size / 2);
-    glTexCoord2f(1.0f, 0.0f);
-    glVertex3f(size / 2, size / 2, -size / 2);
-    glTexCoord2f(0.0f, 0.0f);
-    glVertex3f(-size / 2, size / 2, -size / 2);
+//     // Face traseira
+//     glTexCoord2f(0.0f, 1.0f); 
+//     glVertex3f(-size / 2, -size / 2, -size / 2);
+//     glTexCoord2f(1.0f, 1.0f); 
+//     glVertex3f(size / 2, -size / 2, -size / 2);
+//     glTexCoord2f(1.0f, 0.0f);
+//     glVertex3f(size / 2, size / 2, -size / 2);
+//     glTexCoord2f(0.0f, 0.0f);
+//     glVertex3f(-size / 2, size / 2, -size / 2);
 
-    // Face esquerda
-    glTexCoord2f(0.0f, 1.0f); 
-    glVertex3f(-size / 2, -size / 2, -size / 2);
-    glTexCoord2f(1.0f, 1.0f); 
-    glVertex3f(-size / 2, -size / 2, size / 2);
-    glTexCoord2f(1.0f, 0.0f);
-    glVertex3f(-size / 2, size / 2, size / 2);
-    glTexCoord2f(0.0f, 0.0f);
-    glVertex3f(-size / 2, size / 2, -size / 2);
+//     // Face esquerda
+//     glTexCoord2f(0.0f, 1.0f); 
+//     glVertex3f(-size / 2, -size / 2, -size / 2);
+//     glTexCoord2f(1.0f, 1.0f); 
+//     glVertex3f(-size / 2, -size / 2, size / 2);
+//     glTexCoord2f(1.0f, 0.0f);
+//     glVertex3f(-size / 2, size / 2, size / 2);
+//     glTexCoord2f(0.0f, 0.0f);
+//     glVertex3f(-size / 2, size / 2, -size / 2);
 
-    // Face direita
-    glTexCoord2f(0.0f, 1.0f);
-    glVertex3f(size / 2, -size / 2, -size / 2);
-    glTexCoord2f(1.0f, 1.0f); 
-    glVertex3f(size / 2, -size / 2, size / 2);
-    glTexCoord2f(1.0f, 0.0f);
-    glVertex3f(size / 2, size / 2, size / 2);
-    glTexCoord2f(0.0f, 0.0f);
-    glVertex3f(size / 2, size / 2, -size / 2);
+//     // Face direita
+//     glTexCoord2f(0.0f, 1.0f);
+//     glVertex3f(size / 2, -size / 2, -size / 2);
+//     glTexCoord2f(1.0f, 1.0f); 
+//     glVertex3f(size / 2, -size / 2, size / 2);
+//     glTexCoord2f(1.0f, 0.0f);
+//     glVertex3f(size / 2, size / 2, size / 2);
+//     glTexCoord2f(0.0f, 0.0f);
+//     glVertex3f(size / 2, size / 2, -size / 2);
 
-    // Face superior
-    glTexCoord2f(0.0f, 1.0f); 
-    glVertex3f(-size / 2, size / 2, -size / 2);
-    glTexCoord2f(1.0f, 1.0f); 
-    glVertex3f(size / 2, size / 2, -size / 2);
-    glTexCoord2f(1.0f, 0.0f);
-    glVertex3f(size / 2, size / 2, size / 2);
-    glTexCoord2f(0.0f, 0.0f);
-    glVertex3f(-size / 2, size / 2, size / 2);
+//     // Face superior
+//     glTexCoord2f(0.0f, 1.0f); 
+//     glVertex3f(-size / 2, size / 2, -size / 2);
+//     glTexCoord2f(1.0f, 1.0f); 
+//     glVertex3f(size / 2, size / 2, -size / 2);
+//     glTexCoord2f(1.0f, 0.0f);
+//     glVertex3f(size / 2, size / 2, size / 2);
+//     glTexCoord2f(0.0f, 0.0f);
+//     glVertex3f(-size / 2, size / 2, size / 2);
 
-    // Face inferior
-    glTexCoord2f(0.0f, 1.0f); 
-    glVertex3f(-size / 2, -size / 2, -size / 2);
-    glTexCoord2f(1.0f, 1.0f); 
-    glVertex3f(size / 2, -size / 2, -size / 2);
-    glTexCoord2f(1.0f, 0.0f);
-    glVertex3f(size / 2, -size / 2, size / 2);
-    glTexCoord2f(0.0f, 0.0f);
-    glVertex3f(-size / 2, -size / 2, size / 2);
+//     // Face inferior
+//     glTexCoord2f(0.0f, 1.0f); 
+//     glVertex3f(-size / 2, -size / 2, -size / 2);
+//     glTexCoord2f(1.0f, 1.0f); 
+//     glVertex3f(size / 2, -size / 2, -size / 2);
+//     glTexCoord2f(1.0f, 0.0f);
+//     glVertex3f(size / 2, -size / 2, size / 2);
+//     glTexCoord2f(0.0f, 0.0f);
+//     glVertex3f(-size / 2, -size / 2, size / 2);
 
-    glEnd();
+//     glEnd();
 
-    glDisable(GL_TEXTURE_2D);
-}
-
-
-
+//     glDisable(GL_TEXTURE_2D);
+// }
 
 void drawText(float x, float y, const char* text) {
     glRasterPos2f(x, y);
@@ -336,7 +354,6 @@ void drawText(float x, float y, const char* text) {
         text++;
     }
 }
-
 
 // Fun√ß√£o para verificar colis√µes
 bool check_collision(float px, float py, float psize, float ex, float ey, float ewidth, float eheight, float edepth) {
@@ -356,63 +373,178 @@ bool check_collision(float px, float py, float psize, float ex, float ey, float 
     return !(pxMax < exMin || pxMin > exMax || pyMax < eyMin || pyMin > eyMax);
 }
 
-// Fun√ß√£o para desenhar a cena
+void drawBird() {
+    // Configura√ß√£o do material do corpo do p√°ssaro
+    GLfloat birdBodyAmbient[] = {1.0f, 1.0f, 0.0f, 1.0f}; // Cor ambiente (amarelo)
+    GLfloat birdBodyDiffuse[] = {1.0f, 1.0f, 0.0f, 1.0f}; // Cor difusa (amarelo)
+    GLfloat birdBodySpecular[] = {1.0f, 1.0f, 1.0f, 1.0f}; // Cor especular (branco)
+    GLfloat birdBodyShininess[] = {50.0f}; // Brilho
+
+    // Aplicar as propriedades do material do corpo do p√°ssaro
+    glMaterialfv(GL_FRONT, GL_AMBIENT, birdBodyAmbient);
+    glMaterialfv(GL_FRONT, GL_DIFFUSE, birdBodyDiffuse);
+    glMaterialfv(GL_FRONT, GL_SPECULAR, birdBodySpecular);
+    glMaterialfv(GL_FRONT, GL_SHININESS, birdBodyShininess);
+
+    // Desenha o corpo do p√°ssaro
+    glPushMatrix();
+    glTranslatef(0.0f, 0.0f, 0.0f); // Posi√ß√£o do corpo
+    glRotatef(0.0f, 0.0f, 1.0f, 0.0f); // Gira a esfera 0 graus no eixo Y para posicionar o p√°ssaro de frente para a direita
+    glutSolidSphere(0.1f, 20, 20); // Desenha a esfera com raio 0.1
+    glPopMatrix();
+
+    // Configura√ß√£o do material das asas
+    GLfloat birdWingAmbient[] = {1.0f, 1.0f, 1.0f, 1.0f}; // Cor ambiente (branco)
+    GLfloat birdWingDiffuse[] = {1.0f, 1.0f, 1.0f, 1.0f}; // Cor difusa (branco)
+    GLfloat birdWingSpecular[] = {1.0f, 1.0f, 1.0f, 1.0f}; // Cor especular (branco)
+    GLfloat birdWingShininess[] = {50.0f}; // Brilho
+
+    // Aplicar as propriedades do material das asas
+    glMaterialfv(GL_FRONT, GL_AMBIENT, birdWingAmbient);
+    glMaterialfv(GL_FRONT, GL_DIFFUSE, birdWingDiffuse);
+    glMaterialfv(GL_FRONT, GL_SPECULAR, birdWingSpecular);
+    glMaterialfv(GL_FRONT, GL_SHININESS, birdWingShininess);
+
+    // Desenha a asa esquerda
+    glPushMatrix();
+    glTranslatef(0.0f, 0.0f, -0.11f); // Posi√ß√£o da asa esquerda (grudada ao corpo)
+    glRotatef(0.0f, 0.0f, 1.0f, 0.0f); // Gira a asa para alinhar com a nova orienta√ß√£o da esfera
+    glScalef(0.02f, 0.1f, 0.1f); // Escala para criar a asa (fininha e longa)
+    glutSolidCube(1.0f); // Usa um cubo s√≥lido para representar a asa
+    glPopMatrix();
+
+    // Desenha a asa direita
+    glPushMatrix();
+    glTranslatef(0.0f, 0.0f, 0.11f); // Posi√ß√£o da asa direita (grudada ao corpo)
+    glRotatef(0.0f, 0.0f, 1.0f, 0.0f); // Gira a asa para alinhar com a nova orienta√ß√£o da esfera
+    glScalef(0.02f, 0.1f, 0.1f); // Escala para criar a asa (fininha e longa)
+    glutSolidCube(1.0f); // Usa um cubo s√≥lido para representar a asa
+    glPopMatrix();
+
+    // Configura√ß√£o do material do bico e da cauda
+    GLfloat birdBeakTailAmbient[] = {1.0f, 0.5f, 0.0f, 1.0f}; // Cor ambiente (laranja)
+    GLfloat birdBeakTailDiffuse[] = {1.0f, 0.5f, 0.0f, 1.0f}; // Cor difusa (laranja)
+    GLfloat birdBeakTailSpecular[] = {1.0f, 1.0f, 1.0f, 1.0f}; // Cor especular (branco)
+    GLfloat birdBeakTailShininess[] = {50.0f}; // Brilho
+
+    // Aplicar as propriedades do material do bico e da cauda
+    glMaterialfv(GL_FRONT, GL_AMBIENT, birdBeakTailAmbient);
+    glMaterialfv(GL_FRONT, GL_DIFFUSE, birdBeakTailDiffuse);
+    glMaterialfv(GL_FRONT, GL_SPECULAR, birdBeakTailSpecular);
+    glMaterialfv(GL_FRONT, GL_SHININESS, birdBeakTailShininess);
+
+    // Desenha o bico
+    glPushMatrix();
+    glTranslatef(0.1f, 0.0f, 0.0f); // Posi√ß√£o do bico na frente da esfera
+    glScalef(0.05f, 0.02f, 0.1f); // Escala para criar o bico (pequeno e fino)
+    glutSolidCube(1.0f); // Usa um cubo s√≥lido para representar o bico
+    glPopMatrix();
+
+    // Desenha a cauda
+    glPushMatrix();
+    glTranslatef(-0.15f, 0.0f, 0.0f); // Posi√ß√£o da cauda na parte traseira da esfera
+    glRotatef(90.0f, 0.0f, 1.0f, 0.0f); // Gira o cone para alinhar com a orienta√ß√£o do corpo
+    glutSolidCone(0.05f, 0.1f, 20, 20); // Desenha um cone com base 0.05 e altura 0.1
+    glPopMatrix();
+
+    // Configura√ß√£o do material dos olhos
+    GLfloat birdEyeAmbient[] = {0.0f, 0.0f, 0.0f, 1.0f}; // Cor ambiente (preto)
+    GLfloat birdEyeDiffuse[] = {0.0f, 0.0f, 0.0f, 1.0f}; // Cor difusa (preto)
+    GLfloat birdEyeSpecular[] = {1.0f, 1.0f, 1.0f, 1.0f}; // Cor especular (branco)
+    GLfloat birdEyeShininess[] = {50.0f}; // Brilho
+
+    // Aplicar as propriedades do material dos olhos
+    glMaterialfv(GL_FRONT, GL_AMBIENT, birdEyeAmbient);
+    glMaterialfv(GL_FRONT, GL_DIFFUSE, birdEyeDiffuse);
+    glMaterialfv(GL_FRONT, GL_SPECULAR, birdEyeSpecular);
+    glMaterialfv(GL_FRONT, GL_SHININESS, birdEyeShininess);
+
+    // Desenha o olho esquerdo
+    glPushMatrix();
+    glTranslatef(0.08f, 0.05f, 0.02f); // Posi√ß√£o do olho esquerdo
+    glutSolidSphere(0.015f, 20, 20); // Aumenta o raio da esfera para representar o olho
+    glPopMatrix();
+
+    // Desenha o olho direito
+    glPushMatrix();
+    glTranslatef(0.08f, 0.05f, -0.02f); // Posi√ß√£o do olho direito
+    glutSolidSphere(0.015f, 20, 20); // Aumenta o raio da esfera para representar o olho
+    glPopMatrix();
+}
+
+void drawBackground() {
+    glBindTexture(GL_TEXTURE_2D, backgroundTexture);
+    glEnable(GL_TEXTURE_2D);
+
+    glBegin(GL_QUADS);
+        // Coordenadas do fundo
+        glTexCoord2f(0.0f, 0.0f); glVertex3f(-1.0f, -1.0f, 0.0f);
+        glTexCoord2f(1.0f, 0.0f); glVertex3f(1.0f, -1.0f, 0.0f);
+        glTexCoord2f(1.0f, 1.0f); glVertex3f(1.0f, 1.0f, 0.0f);
+        glTexCoord2f(0.0f, 1.0f); glVertex3f(-1.0f, 1.0f, 0.0f);
+    glEnd();
+
+    glDisable(GL_TEXTURE_2D);
+}
+
 void display(void) {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glLoadIdentity();
 
+    drawBackground(); // Desenha o fundo
+
     glTranslatef(0.0f, 0.0f, -3.0f);
 
     if (!gameOver) {
-        // Desenha o p·ssaro com textura
+        // Desenha o p√°ssaro
         glPushMatrix();
         glTranslatef(birdX, birdY, 0.0f);
-        drawTexturedCube(birdSize, birdTexture); // Usa a textura do p·ssaro
+        drawBird(); // Desenha o p√°ssaro usando primitivas do OpenGL
         glPopMatrix();
 
         // Desenha os canos 
-		for (int i = 0; i < PIPE_COUNT; ++i) {
-		    // Cano superior
-		    glPushMatrix();
-		    glTranslatef(pipePositions[i], pipeGapY[i] + pipeGapSize + PIPE_HEIGHT / 2, 0.0f);
-		    draw_parallelepiped(PIPE_WIDTH, PIPE_HEIGHT, PIPE_DEPTH, false);
-		    glPopMatrix();
-		
-		    // Cano inferior
-		    glPushMatrix();
-		    glTranslatef(pipePositions[i], pipeGapY[i] - pipeGapSize - PIPE_HEIGHT / 2, 0.0f);
-		    draw_parallelepiped(PIPE_WIDTH, PIPE_HEIGHT, PIPE_DEPTH, true);
-		    glPopMatrix();
-		}
+        for (int i = 0; i < PIPE_COUNT; ++i) {
+            // Cano superior
+            glPushMatrix();
+            glTranslatef(pipePositions[i], pipeGapY[i] + pipeGapSize + PIPE_HEIGHT / 2, 0.0f);
+            draw_parallelepiped(PIPE_WIDTH, PIPE_HEIGHT, PIPE_DEPTH, false);
+            glPopMatrix();
+        
+            // Cano inferior
+            glPushMatrix();
+            glTranslatef(pipePositions[i], pipeGapY[i] - pipeGapSize - PIPE_HEIGHT / 2, 0.0f);
+            draw_parallelepiped(PIPE_WIDTH, PIPE_HEIGHT, PIPE_DEPTH, true);
+            glPopMatrix();
+        }
 
-        // Desenha a pontuaÁ„o
+        // Desenha a pontua√ß√£o
         glColor3f(0.0f, 0.0f, 0.0f);
         char scoreText[50];
         sprintf(scoreText, "Score: %d", score);
         glMatrixMode(GL_PROJECTION);
         glPushMatrix();
         glLoadIdentity();
-        gluOrtho2D(0.0, 1.0, 0.0, 1.0); // Coordenadas para a pontuaÁ„o
+        gluOrtho2D(0.0, 1.0, 0.0, 1.0); // Coordenadas para a pontua√ß√£o
         glMatrixMode(GL_MODELVIEW);
         glPushMatrix();
         glLoadIdentity();
-        glRasterPos2f(0.8f, 0.9f);  // PosiÁ„o no canto superior direito
+        glRasterPos2f(0.8f, 0.9f);  // Posi√ß√£o no canto superior direito
         drawText(0.0f, 0.0f, scoreText);
         glPopMatrix();
         glMatrixMode(GL_PROJECTION);
         glPopMatrix();
         glMatrixMode(GL_MODELVIEW);
     } else {
-        // Mensagem combinada de Game Over e reinÌcio
+        // Mensagem combinada de Game Over e rein√≠cio
         glColor3f(0.0f, 0.0f, 0.0f);
         char gameOverText[100];
         sprintf(gameOverText, "Game Over! Pressione 'R' para reiniciar!");
 
-        // ConfiguraÁ„o de projeÁ„o para centralizar o texto
+        // Configura√ß√£o de proje√ß√£o para centralizar o texto
         glMatrixMode(GL_PROJECTION);
         glPushMatrix();
         glLoadIdentity();
-        gluOrtho2D(0.0, 1.0, 0.0, 1.0); // Coordenadas de projeÁ„o
+        gluOrtho2D(0.0, 1.0, 0.0, 1.0); // Coordenadas de proje√ß√£o
         glMatrixMode(GL_MODELVIEW);
         glPushMatrix();
         glLoadIdentity();
@@ -428,7 +560,7 @@ void display(void) {
         float centerX = 0.5f; // Centraliza horizontalmente
         float centerY = 0.5f; // Centraliza verticalmente
 
-        glRasterPos2f(centerX - textWidth / 2 / 800.0f, centerY);  // Ajuste de acordo com a resoluÁ„o
+        glRasterPos2f(centerX - textWidth / 2 / 800.0f, centerY);  // Ajuste de acordo com a resolu√ß√£o
 
         drawText(0.0f, 0.0f, gameOverText);
 
@@ -440,7 +572,6 @@ void display(void) {
 
     glutSwapBuffers();
 }
-
 
 // Fun√ß√£o para redimensionar a janela
 void reshape(int w, int h) {
@@ -456,7 +587,7 @@ void timer(int value) {
         birdVelocity -= GRAVITY;
         birdY += birdVelocity;
 
-        // Atualiza a posiÁ„o horizontal do p·ssaro
+        // Atualiza a posiÔøΩÔøΩo horizontal do pÔøΩssaro
         for (int i = 0; i < PIPE_COUNT; ++i) {
             pipePositions[i] -= 0.025f; // Velocidade do cano reduzida
 
@@ -467,16 +598,16 @@ void timer(int value) {
                 passedPipe[i] = false; // Reset flag
             }
 
-            // Verifica se o p·ssaro passou pelo cano
+            // Verifica se o pÔøΩssaro passou pelo cano
             for (int j = 0; j < PIPE_COUNT; ++j) {
-                // Verifica se o p·ssaro est· na mesma posiÁ„o horizontal que o cano
+                // Verifica se o pÔøΩssaro estÔøΩ na mesma posiÔøΩÔøΩo horizontal que o cano
                 if (pipePositions[j] < birdX + birdSize / 2 && pipePositions[j] > birdX - birdSize / 2) {
-                    // Verifica colis„o com a parte superior do cano
+                    // Verifica colisÔøΩo com a parte superior do cano
                     if (check_collision(birdX, birdY, birdSize, pipePositions[j], pipeGapY[j] + pipeGapSize + PIPE_HEIGHT / 2, PIPE_WIDTH, PIPE_HEIGHT, PIPE_DEPTH)) {
                         gameOver = true;
                         break;
                     }
-                    // Verifica colis„o com a parte inferior do cano
+                    // Verifica colisÔøΩo com a parte inferior do cano
                     if (check_collision(birdX, birdY, birdSize, pipePositions[j], pipeGapY[j] - pipeGapSize - PIPE_HEIGHT / 2, PIPE_WIDTH, PIPE_HEIGHT, PIPE_DEPTH)) {
                         gameOver = true;
                         break;
@@ -484,14 +615,14 @@ void timer(int value) {
                 }
             }
 
-            // Incrementa o score se o p·ssaro passou pelo cano
+            // Incrementa o score se o pÔøΩssaro passou pelo cano
             if (!passedPipe[i] && pipePositions[i] < birdX - birdSize / 2) {
                 passedPipe[i] = true;
                 score++;
             }
         }
 
-        // Verifica se o p·ssaro saiu da tela
+        // Verifica se o pÔøΩssaro saiu da tela
         if (birdY - birdSize / 2 < -1.5f || birdY + birdSize / 2 > 1.5f) {
             gameOver = true;
         }
