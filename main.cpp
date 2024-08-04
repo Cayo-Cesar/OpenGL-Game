@@ -55,6 +55,14 @@ GLuint pipeTexture;
 GLuint birdTexture;
 GLuint backgroundTexture;
 
+struct Cloud {
+    float x, y, z;
+    float speed;
+};
+
+const int NUM_CLOUDS = 8;
+Cloud clouds[NUM_CLOUDS];
+
 // Flag para verificar se o pássaro passou por um cano
 bool passedPipe[PIPE_COUNT] = { false };
 
@@ -67,6 +75,7 @@ void keyboard(unsigned char key, int x, int y);
 void resetGame(void);
 void draw_parallelepiped(float width, float height, float depth);  // Function added
 bool check_collision(float px, float py, float psize, float ex, float ey, float ewidth, float eheight, float edepth); // Function added
+void initClouds();
 
 GLuint loadTexture(const char* filename) {
     GLuint textureID;
@@ -140,6 +149,8 @@ void init_glut(const char *window_name, int argc, char** argv) {
     glEnable(GL_DEPTH_TEST);
     glClearColor(0.5f, 0.7f, 1.0f, 1.0f); // Lighter blue background
 
+    initClouds();
+
     // Configura��o da ilumina��o
     glEnable(GL_LIGHTING);
     glEnable(GL_LIGHT0);
@@ -170,7 +181,7 @@ void init_glut(const char *window_name, int argc, char** argv) {
 
 void draw_background_square() {
     glPushAttrib(GL_ENABLE_BIT | GL_TEXTURE_BIT | GL_LIGHTING_BIT);
-    glDisable(GL_DEPTH_TEST); // Desativa o teste de profundidade para garantir que o quadrado seja desenhado atr�s de tudo
+    glDisable(GL_DEPTH_TEST); // Desativa o teste de profundidade para garantir que o quadrado seja desenhado atr�s de tudo
     
     glBindTexture(GL_TEXTURE_2D, backgroundTexture);
     glEnable(GL_TEXTURE_2D);
@@ -178,8 +189,8 @@ void draw_background_square() {
     // Configura o material para um brilho mais alto
     GLfloat materialAmbient[] = {1.0f, 1.0f, 1.0f, 1.0f}; 
     GLfloat materialDiffuse[] = {1.0f, 1.0f, 1.0f, 1.0f}; 
-    GLfloat materialSpecular[] = {1.0f, 1.0f, 1.0f, 1.0f}; // Intensidade m�xima do brilho especular
-    GLfloat materialShininess[] = {3.0f}; // Aumenta o brilho especular para o m�ximo
+    GLfloat materialSpecular[] = {1.0f, 1.0f, 1.0f, 1.0f}; // Intensidade m�xima do brilho especular
+    GLfloat materialShininess[] = {3.0f}; // Aumenta o brilho especular para o m�ximo
 
     glMaterialfv(GL_FRONT, GL_AMBIENT, materialAmbient);
     glMaterialfv(GL_FRONT, GL_DIFFUSE, materialDiffuse);
@@ -188,13 +199,13 @@ void draw_background_square() {
 
     // Desenha um quadrado com a textura
     glBegin(GL_QUADS);
-    glTexCoord2f(0.0f, 1.0f); glVertex3f(-1.0f, -0.8f, -1.0f); // V�rtice inferior esquerdo ajustado
-    glTexCoord2f(1.0f, 1.0f); glVertex3f(1.0f, -0.8f, -1.0f); // V�rtice inferior direito ajustado
-    glTexCoord2f(1.0f, 0.0f); glVertex3f(1.0f, 1.0f, -1.0f); // V�rtice superior direito
-    glTexCoord2f(0.0f, 0.0f); glVertex3f(-1.0f, 1.0f, -1.0f); // V�rtice superior esquerdo
+    glTexCoord2f(0.0f, 1.0f); glVertex3f(-1.0f, -0.8f, -1.0f); // V�rtice inferior esquerdo ajustado
+    glTexCoord2f(1.0f, 1.0f); glVertex3f(1.0f, -0.8f, -1.0f); // V�rtice inferior direito ajustado
+    glTexCoord2f(1.0f, 0.0f); glVertex3f(1.0f, 1.0f, -1.0f); // V�rtice superior direito
+    glTexCoord2f(0.0f, 0.0f); glVertex3f(-1.0f, 1.0f, -1.0f); // V�rtice superior esquerdo
     glEnd();
 
-    glEnable(GL_DEPTH_TEST); // Reativa o teste de profundidade ap�s desenhar o fundo
+    glEnable(GL_DEPTH_TEST); // Reativa o teste de profundidade ap�s desenhar o fundo
     
     glPopAttrib();
 }
@@ -375,15 +386,17 @@ void drawText(float x, float y, const char* text) {
     }
 }
 
-// Função para verificar colisões
 bool check_collision(float px, float py, float psize, float ex, float ey, float ewidth, float eheight, float edepth) {
-    // Bounding Box do Passaro (um cubo)
-    float pxMin = px - psize / 2;
-    float pxMax = px + psize / 2;
-    float pyMin = py - psize / 2;
-    float pyMax = py + psize / 2;
+    // Fator de ajuste para aumentar a caixa de colisão do pássaro
+    float collision_margin = 0.02f; // Ajuste esse valor conforme necessário
 
-    // Bounding Box do Cano (um paralelepipedo)
+    // Bounding Box do Passaro (um cubo) com margem extra
+    float pxMin = px - (psize + collision_margin) / 2;
+    float pxMax = px + (psize + collision_margin) / 2;
+    float pyMin = py - (psize + collision_margin) / 2;
+    float pyMax = py + (psize + collision_margin) / 2;
+
+    // Bounding Box do Cano (um paralelepípedo)
     float exMin = ex - ewidth / 2;
     float exMax = ex + ewidth / 2;
     float eyMin = ey - eheight / 2;
@@ -492,16 +505,94 @@ void drawBird() {
     glPopMatrix();
 }
 
+void drawCloud(float x, float y, float z) {
+    glColor4f(1.0f, 1.0f, 1.0f, 0.8f); // Cor branca com transparência
 
+    glPushMatrix();
+    glTranslatef(x, y, z);
+
+    // Desenha várias esferas para criar uma nuvem
+    glutSolidSphere(0.2f, 20, 20);
+
+    glTranslatef(-0.2f, 0.1f, 0.1f);
+    glutSolidSphere(0.15f, 20, 20);
+
+    glTranslatef(0.4f, -0.2f, -0.1f);
+    glutSolidSphere(0.15f, 20, 20);
+
+    glTranslatef(-0.1f, 0.15f, 0.2f);
+    glutSolidSphere(0.1f, 20, 20);
+
+    glTranslatef(0.1f, 0.05f, -0.3f);
+    glutSolidSphere(0.12f, 20, 20);
+
+    glPopMatrix();
+}
+
+void drawClouds() {
+    // Desabilita a iluminação para as nuvens e contornos
+    glDisable(GL_LIGHTING);
+
+    // Define a cor para o contorno (cinza escuro)
+    glColor3f(0.4f, 0.4f, 0.4f);
+
+    // Desenha o contorno
+    for (int i = 0; i < NUM_CLOUDS; ++i) {
+        glPushMatrix();
+        glTranslatef(clouds[i].x, clouds[i].y, clouds[i].z);
+        glScalef(1.1f, 1.1f, 1.1f); // Aumenta ligeiramente para criar o efeito de contorno
+        drawCloud(0.0f, 0.0f, 0.0f);
+        glPopMatrix();
+    }
+
+    // Define a cor branca para as nuvens reais
+    glColor3f(1.0f, 1.0f, 1.0f);
+
+    // Desenha as nuvens reais
+    for (int i = 0; i < NUM_CLOUDS; ++i) {
+        drawCloud(clouds[i].x, clouds[i].y, clouds[i].z);
+    }
+
+    // Reabilita a iluminação para os outros objetos
+    glEnable(GL_LIGHTING);
+}
+
+void updateClouds() {
+    for (int i = 0; i < NUM_CLOUDS; ++i) {
+        clouds[i].x -= clouds[i].speed;
+        if (clouds[i].x < -5.0f) {
+            clouds[i].x = 5.0f;
+            clouds[i].y = ((rand() % 100) / 100.0f) * 2.0f - 1.0f;
+        }
+    }
+}
+
+void initClouds() {
+    for (int i = 0; i < NUM_CLOUDS; ++i) {
+        clouds[i].x = ((rand() % 100) / 100.0f) * 6.0f - 3.0f;
+        clouds[i].y = ((rand() % 100) / 100.0f) * 2.0f - 1.0f;
+        clouds[i].z = -2.0f - ((rand() % 100) / 100.0f);
+        clouds[i].speed = 0.001f + ((rand() % 100) / 10000.0f);
+    }
+}
 
 
 void display(void) {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glLoadIdentity();
 
-    //drawBackground(); // Desenha o fundo
-	draw_background_square();
-    glTranslatef(0.0f, 0.0f, -3.0f);
+    // Desenha o fundo
+    draw_background_square();
+
+    // Configuração da câmera
+    glTranslatef(0.0f, 0.0f, -5.0f); // Posiciona a câmera um pouco mais longe
+
+    // Atualiza e desenha as nuvens
+    drawClouds();  // Desenha as nuvens primeiro, para que fiquem no fundo
+    updateClouds();
+
+    // Avança um pouco para os elementos do jogo
+    glTranslatef(0.0f, 0.0f, 2.0f);
 
     if (!gameOver) {
         // Desenha o pássaro
@@ -580,7 +671,6 @@ void display(void) {
 
     glutSwapBuffers();
 }
-
 
 
 // Função para redimensionar a janela
