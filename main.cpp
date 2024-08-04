@@ -576,6 +576,44 @@ void initClouds() {
     }
 }
 
+// void drawTree(float trunkHeight, float trunkRadius, float foliageHeight, float foliageRadius) {
+//     // Desenha o tronco da árvore
+//     glPushMatrix();
+//     glColor3f(0.55f, 0.27f, 0.07f); // Cor marrom para o tronco
+//     GLUquadric* trunk = gluNewQuadric();
+//     gluCylinder(trunk, trunkRadius, trunkRadius, trunkHeight, 20, 20);
+//     glPopMatrix();
+
+//     // Desenha a copa da árvore
+//     glPushMatrix();
+//     glColor3f(0.0f, 0.5f, 0.0f); // Cor verde para a copa
+//     glTranslatef(0.0f, 0.0f, trunkHeight); // Move a copa para cima do tronco
+//     glutSolidCone(foliageRadius, foliageHeight, 20, 20);
+//     glPopMatrix();
+// }
+
+// void drawTrees() {
+//     glDisable(GL_LIGHTING); // Desabilita a iluminação para as árvores
+
+//     const int numTrees = 10; // Número de árvores
+//     for (int i = 0; i < numTrees; ++i) {
+//         float x = (rand() % 200 - 100) / 10.0f; // Posição aleatória no eixo X
+//         float z = (rand() % 100 - 150) / 10.0f; // Posição aleatória no eixo Z
+
+//         // Corrige a altura para que as árvores estejam no chão
+//         float trunkHeight = 0.3f;
+//         float trunkRadius = 0.05f;
+//         float foliageHeight = 0.4f;
+//         float foliageRadius = 0.2f;
+
+//         glPushMatrix();
+//         glTranslatef(x, trunkHeight / 2, z); // Move a árvore para a posição correta no fundo
+//         drawTree(trunkHeight, trunkRadius, foliageHeight, foliageRadius); // Desenha a árvore
+//         glPopMatrix();
+//     }
+
+//     glEnable(GL_LIGHTING); // Reabilita a iluminação para os outros objetos
+// }
 
 void display(void) {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -586,6 +624,9 @@ void display(void) {
 
     // Configuração da câmera
     glTranslatef(0.0f, 0.0f, -5.0f); // Posiciona a câmera um pouco mais longe
+
+    // Desenha as árvores no fundo
+    //drawTrees();
 
     // Atualiza e desenha as nuvens
     drawClouds();  // Desenha as nuvens primeiro, para que fiquem no fundo
