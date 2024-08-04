@@ -12,6 +12,7 @@
     #include <GL/glut.h>
     #include <GL/gl.h>
     #include <GL/glu.h>
+    
 #endif
 
 // Definiï¿½ï¿½o condicional para GL_CLAMP_TO_EDGE
@@ -24,6 +25,9 @@
 #include <cmath>
 #include <ctime>
 #include <iostream>
+#include <windows.h>  // Necessário para usar Mmsystem.h no Windows
+#include <mmsystem.h> // Biblioteca para reprodução de áudio
+
 
 #define ESC 27  // Tecla ESC
 #define PIPE_COUNT 3 // NÃºmero de canos
@@ -105,10 +109,10 @@ GLuint loadTexture(const char* filename) {
 
 // FunÃ§Ã£o principal
 int main(int argc, char** argv) {
-    // Inicializa a semente do gerador de nï¿½meros aleatï¿½rios
+    // Inicializa a semente do gerador de números aleatórios
     srand(static_cast<unsigned>(time(0)));
 
-    // Inicializa as posiï¿½ï¿½es dos canos
+    // Inicializa as posições dos canos
     for (int i = 0; i < PIPE_COUNT; ++i) {
         pipePositions[i] = i * PIPE_SPACING + 1.0f;
         pipeGapY[i] = ((rand() % 100) / 100.0f) * 2.0f - 1.0f;
@@ -118,8 +122,13 @@ int main(int argc, char** argv) {
     // Inicializa o GLUT
     init_glut("3D Flappy Bird", argc, argv);
 
+    // Reproduz a música de fundo
+    PlaySound(TEXT("music.wav"), NULL, SND_LOOP | SND_ASYNC);
+
     // Carrega a textura dos canos
-   
+    pipeTexture = loadTexture("canos.png");
+    backgroundTexture = loadTexture("bg.png");
+    // birdTexture = loadTexture("flappy_bird.png");
 
     glutMainLoop();
 
