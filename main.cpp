@@ -29,6 +29,7 @@
 #include <mmsystem.h> // Biblioteca para reprodução de áudio
 
 
+
 #define ESC 27  // Tecla ESC
 #define PIPE_COUNT 3 // NÃºmero de canos
 #define PIPE_SPACING 3.0f   // EspaÃ§amento entre os canos
@@ -106,8 +107,6 @@ GLuint loadTexture(const char* filename) {
 }
 
 
-
-// FunÃ§Ã£o principal
 int main(int argc, char** argv) {
     // Inicializa a semente do gerador de números aleatórios
     srand(static_cast<unsigned>(time(0)));
@@ -123,7 +122,8 @@ int main(int argc, char** argv) {
     init_glut("3D Flappy Bird", argc, argv);
 
     // Reproduz a música de fundo
-    PlaySound(TEXT("music.wav"), NULL, SND_LOOP | SND_ASYNC);
+    mciSendString(TEXT("open \"music.wav\" type mpegvideo alias bgm"), NULL, 0, NULL);
+	mciSendString(TEXT("play bgm repeat"), NULL, 0, NULL);
 
     // Carrega a textura dos canos
     pipeTexture = loadTexture("canos.png");
@@ -131,6 +131,9 @@ int main(int argc, char** argv) {
     // birdTexture = loadTexture("flappy_bird.png");
 
     glutMainLoop();
+
+    // Para a música de fundo quando o jogo termina
+   
 
     return EXIT_SUCCESS;
 }
@@ -687,6 +690,7 @@ void display(void) {
         // Mensagem combinada de Game Over e reinÃ­cio
         glColor3f(0.0f, 0.0f, 0.0f);
         char gameOverText[100];
+        
         sprintf(gameOverText, "Game Over! Pressione 'R' para reiniciar!");
 
         // ConfiguraÃ§Ã£o de projeÃ§Ã£o para centralizar o texto
@@ -754,11 +758,17 @@ void timer(int value) {
                 if (pipePositions[j] < birdX + birdSize / 2 && pipePositions[j] > birdX - birdSize / 2) {
                     // Verifica colisï¿½o com a parte superior do cano
                     if (check_collision(birdX, birdY, birdSize, pipePositions[j], pipeGapY[j] + pipeGapSize + PIPE_HEIGHT / 2, PIPE_WIDTH, PIPE_HEIGHT, PIPE_DEPTH)) {
+                    	mciSendString(TEXT("stop bgm"), NULL, 0, NULL);
+	  	  	            mciSendString(TEXT("close bgm"), NULL, 0, NULL);
+                    	PlaySound(TEXT("gameover.wav"), NULL, SND_ASYNC);
                         gameOver = true;
                         break;
                     }
                     // Verifica colisï¿½o com a parte inferior do cano
                     if (check_collision(birdX, birdY, birdSize, pipePositions[j], pipeGapY[j] - pipeGapSize - PIPE_HEIGHT / 2, PIPE_WIDTH, PIPE_HEIGHT, PIPE_DEPTH)) {
+                    	mciSendString(TEXT("stop bgm"), NULL, 0, NULL);
+ 	 	 	 	 	 	 mciSendString(TEXT("close bgm"), NULL, 0, NULL);
+                    	PlaySound(TEXT("gameover.wav"), NULL, SND_ASYNC);
                         gameOver = true;
                         break;
                     }
@@ -769,6 +779,8 @@ void timer(int value) {
             if (!passedPipe[i] && pipePositions[i] < birdX - birdSize / 2) {
                 passedPipe[i] = true;
                 score++;
+                PlaySound(TEXT("score.wav"), NULL, SND_ASYNC);
+                
             }
         }
 
@@ -797,6 +809,9 @@ void keyboard(unsigned char key, int x, int y) {
         case 'r': // Reiniciar o jogo
             if (gameOver) {
                 resetGame();
+                mciSendString(TEXT("open \"music.wav\" type mpegvideo alias bgm"), NULL, 0, NULL);
+    			mciSendString(TEXT("play bgm repeat"), NULL, 0, NULL);
+    			
             }
             break;
     }
@@ -804,6 +819,7 @@ void keyboard(unsigned char key, int x, int y) {
 
 // FunÃ§Ã£o para reiniciar o jogo
 void resetGame(void) {
+	
     birdY = 0.0f;
     birdVelocity = 0.0f;
     birdX = -1.0f;
