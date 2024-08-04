@@ -181,16 +181,16 @@ void init_glut(const char *window_name, int argc, char** argv) {
 
 void draw_background_square() {
     glPushAttrib(GL_ENABLE_BIT | GL_TEXTURE_BIT | GL_LIGHTING_BIT);
-    glDisable(GL_DEPTH_TEST); // Desativa o teste de profundidade para garantir que o quadrado seja desenhado atr�s de tudo
+    glDisable(GL_DEPTH_TEST); // Desativa o teste de profundidade para garantir que o quadrado seja desenhado atrás de tudo
     
     glBindTexture(GL_TEXTURE_2D, backgroundTexture);
     glEnable(GL_TEXTURE_2D);
 
     // Configura o material para um brilho mais alto
-    GLfloat materialAmbient[] = {1.0f, 1.0f, 1.0f, 1.0f}; 
-    GLfloat materialDiffuse[] = {1.0f, 1.0f, 1.0f, 1.0f}; 
-    GLfloat materialSpecular[] = {1.0f, 1.0f, 1.0f, 1.0f}; // Intensidade m�xima do brilho especular
-    GLfloat materialShininess[] = {3.0f}; // Aumenta o brilho especular para o m�ximo
+    GLfloat materialAmbient[] = {1.5f, 1.5f, 1.5f, 1.0f}; 
+    GLfloat materialDiffuse[] = {1.5f, 1.5f, 1.5f, 1.0f}; 
+    GLfloat materialSpecular[] = {1.0f, 1.0f, 1.0f, 1.0f}; // Intensidade máxima do brilho especular
+    GLfloat materialShininess[] = {3.0f}; // Aumenta o brilho especular para o máximo
 
     glMaterialfv(GL_FRONT, GL_AMBIENT, materialAmbient);
     glMaterialfv(GL_FRONT, GL_DIFFUSE, materialDiffuse);
@@ -199,13 +199,13 @@ void draw_background_square() {
 
     // Desenha um quadrado com a textura
     glBegin(GL_QUADS);
-    glTexCoord2f(0.0f, 1.0f); glVertex3f(-1.0f, -0.8f, -1.0f); // V�rtice inferior esquerdo ajustado
-    glTexCoord2f(1.0f, 1.0f); glVertex3f(1.0f, -0.8f, -1.0f); // V�rtice inferior direito ajustado
-    glTexCoord2f(1.0f, 0.0f); glVertex3f(1.0f, 1.0f, -1.0f); // V�rtice superior direito
-    glTexCoord2f(0.0f, 0.0f); glVertex3f(-1.0f, 1.0f, -1.0f); // V�rtice superior esquerdo
+    glTexCoord2f(0.0f, 1.0f); glVertex3f(-1.0f, -0.8f, -1.0f); // Vértice inferior esquerdo ajustado
+    glTexCoord2f(1.0f, 1.0f); glVertex3f(1.0f, -0.8f, -1.0f); // Vértice inferior direito ajustado
+    glTexCoord2f(1.0f, 0.0f); glVertex3f(1.0f, 1.0f, -1.0f); // Vértice superior direito
+    glTexCoord2f(0.0f, 0.0f); glVertex3f(-1.0f, 1.0f, -1.0f); // Vértice superior esquerdo
     glEnd();
 
-    glEnable(GL_DEPTH_TEST); // Reativa o teste de profundidade ap�s desenhar o fundo
+    glEnable(GL_DEPTH_TEST); // Reativa o teste de profundidade após desenhar o fundo
     
     glPopAttrib();
 }
