@@ -786,6 +786,9 @@ void timer(int value) {
 
         // Verifica se o p�ssaro saiu da tela
         if (birdY - birdSize / 2 < -1.5f || birdY + birdSize / 2 > 1.5f) {
+        	mciSendString(TEXT("stop bgm"), NULL, 0, NULL);
+            mciSendString(TEXT("close bgm"), NULL, 0, NULL);
+     	    PlaySound(TEXT("gameover.wav"), NULL, SND_ASYNC);
             gameOver = true;
         }
     }
