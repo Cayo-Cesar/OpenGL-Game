@@ -2,7 +2,6 @@
  Jogo Flappy Bird em 3D utilizando OpenGL e GLUT
  */
 
-// Importação das bibliotecas necessárias
 #ifdef __APPLE__
     #define GL_SILENCE_DEPRECATION
     #include <GLUT/glut.h>
@@ -12,12 +11,21 @@
     #include <GL/glut.h>
     #include <GL/gl.h>
     #include <GL/glu.h>
+    
+#endif
+
+// Definicao condicional para GL_CLAMP_TO_EDGE
+#ifndef GL_CLAMP_TO_EDGE
+    #define GL_CLAMP_TO_EDGE 0x812F
 #endif
 
 #include <cstdio>
 #include <cstdlib>
 #include <cmath>
 #include <ctime>
+#include <iostream>
+#include <windows.h>  // Necessario para usar Mmsystem.h no Windows
+#include <mmsystem.h> // Biblioteca para reproducao de audio
 
 #define ESC 27  // Tecla ESC
 #define PIPE_COUNT 3 // Número de canos
@@ -27,6 +35,10 @@
 #define PIPE_DEPTH 0.2f  // Profundidade do cano
 #define GRAVITY 0.001f  // Gravidade
 #define FLAP_STRENGTH 0.04f  // Força do flap
+
+//Carregar textura
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
 
 float birdY = 0.0f; // Posição inicial do pássaro
 float birdVelocity = 0.0f; // Velocidade inicial do pássaro
@@ -41,6 +53,20 @@ bool gameOver = false; // Flag para indicar o fim do jogo
 
 int score = 0; // Pontuação do jogador
 
+GLuint pipeTexture; // Textura dos canos
+GLuint birdTexture; // Textura do pássaro
+GLuint backgroundTexture; // Textura do fundo
+
+// Estrutura para representar as nuvens
+struct Cloud {
+    float x, y, z;
+    float speed;
+};
+
+// Array de nuvens
+const int NUM_CLOUDS = 8;
+Cloud clouds[NUM_CLOUDS];
+
 // Flag para verificar se o pássaro passou por um cano
 bool passedPipe[PIPE_COUNT] = { false };
 
@@ -53,13 +79,39 @@ void keyboard(unsigned char key, int x, int y);
 void resetGame(void);
 void draw_parallelepiped(float width, float height, float depth);  // Function added
 bool check_collision(float px, float py, float psize, float ex, float ey, float ewidth, float eheight, float edepth); // Function added
+void initClouds();
 
-// Função principal
+// Função para carregar texturas
+GLuint loadTexture(const char* filename) {
+    GLuint textureID;
+    int width, height, nrChannels;
+    unsigned char* data = stbi_load(filename, &width, &height, &nrChannels, 0);
+
+    if (!data) {
+        fprintf(stderr, "Failed to load texture\n");
+        return 0;
+    }
+
+    glGenTextures(1, &textureID);
+    glBindTexture(GL_TEXTURE_2D, textureID);
+
+    // Configura a textura
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE); // Usando GL_CLAMP_TO_EDGE
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE); // Usando GL_CLAMP_TO_EDGE
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+    stbi_image_free(data);
+    return textureID;
+}
+
+
 int main(int argc, char** argv) {
-    // Inicializa a semente do gerador de números aleatórios
+    // Inicializa a semente do gerador de numeros aleatorios
     srand(static_cast<unsigned>(time(0)));
 
-    // Inicializa as posições dos canos
+    // Inicializa as posicoes dos canos
     for (int i = 0; i < PIPE_COUNT; ++i) {
         pipePositions[i] = i * PIPE_SPACING + 1.0f;
         pipeGapY[i] = ((rand() % 100) / 100.0f) * 2.0f - 1.0f;
@@ -68,8 +120,16 @@ int main(int argc, char** argv) {
 
     // Inicializa o GLUT
     init_glut("3D Flappy Bird", argc, argv);
-    glutMainLoop();
 
+    // Reproduz a musica de fundo
+    mciSendString(TEXT("open \"music.wav\" type mpegvideo alias bgm"), NULL, 0, NULL);
+	mciSendString(TEXT("play bgm repeat"), NULL, 0, NULL);
+
+    // Carrega a textura dos canos
+    pipeTexture = loadTexture("canos.png");
+    backgroundTexture = loadTexture("bg.png");
+
+    glutMainLoop();
     return EXIT_SUCCESS;
 }
 
@@ -80,114 +140,391 @@ void init_glut(const char *window_name, int argc, char** argv) {
     glutInitWindowSize(800, 600);
     glutInitWindowPosition(100, 100);
     glutCreateWindow(window_name);
-
+ 
     glutKeyboardFunc(keyboard);
     glutDisplayFunc(display);
     glutReshapeFunc(reshape);
     glutTimerFunc(16, timer, 0);
-
+    
+	pipeTexture = loadTexture("canos.png");
+	backgroundTexture = loadTexture("bg.png");
+	
     glEnable(GL_DEPTH_TEST);
     glClearColor(0.5f, 0.7f, 1.0f, 1.0f); // Lighter blue background
+
+    initClouds();
+
+    // Configuracao da iluminacao
+    glEnable(GL_LIGHTING);
+    glEnable(GL_LIGHT0);
+
+    // Configuracao da luz ambiente
+    GLfloat ambientLight[] = {0.3f, 0.3f, 0.3f, 1.0f};
+    glLightfv(GL_LIGHT0, GL_AMBIENT, ambientLight);
+
+    // Configuracao da luz difusa
+    GLfloat diffuseLight[] = {0.7f, 0.7f, 0.7f, 1.0f};
+    glLightfv(GL_LIGHT0, GL_DIFFUSE, diffuseLight);
+
+    // Configuracao da luz especular
+    GLfloat specularLight[] = {1.0f, 1.0f, 1.0f, 1.0f};
+    glLightfv(GL_LIGHT0, GL_SPECULAR, specularLight);
+
+    // Configuracao da posicao da luz
+    GLfloat lightPosition[] = {1.0f, 1.0f, 1.0f, 0.0f}; // Luz direcionada
+    glLightfv(GL_LIGHT0, GL_POSITION, lightPosition);
 }
 
-// Função para desenhar um paralelepípedo
-void draw_parallelepiped(float width, float height, float depth) {
+void draw_background_square() {
+    glPushAttrib(GL_ENABLE_BIT | GL_TEXTURE_BIT | GL_LIGHTING_BIT);
+    glDisable(GL_DEPTH_TEST); // Desativa o teste de profundidade para garantir que o quadrado seja desenhado atrás de tudo
+    
+    glBindTexture(GL_TEXTURE_2D, backgroundTexture);
+    glEnable(GL_TEXTURE_2D);
+
+    // Configura o material para um brilho mais alto
+    GLfloat materialAmbient[] = {1.5f, 1.5f, 1.5f, 1.0f}; 
+    GLfloat materialDiffuse[] = {1.5f, 1.5f, 1.5f, 1.0f}; 
+    GLfloat materialSpecular[] = {1.0f, 1.0f, 1.0f, 1.0f}; 
+    GLfloat materialShininess[] = {3.0f}; 
+
+    glMaterialfv(GL_FRONT, GL_AMBIENT, materialAmbient);
+    glMaterialfv(GL_FRONT, GL_DIFFUSE, materialDiffuse);
+    glMaterialfv(GL_FRONT, GL_SPECULAR, materialSpecular);
+    glMaterialfv(GL_FRONT, GL_SHININESS, materialShininess);
+
+    // Desenha um quadrado com a textura
+    glBegin(GL_QUADS);
+    glTexCoord2f(0.0f, 1.0f); glVertex3f(-1.0f, -0.8f, -1.0f); // Vértice inferior esquerdo ajustado
+    glTexCoord2f(1.0f, 1.0f); glVertex3f(1.0f, -0.8f, -1.0f); // Vértice inferior direito ajustado
+    glTexCoord2f(1.0f, 0.0f); glVertex3f(1.0f, 1.0f, -1.0f); // Vértice superior direito
+    glTexCoord2f(0.0f, 0.0f); glVertex3f(-1.0f, 1.0f, -1.0f); // Vértice superior esquerdo
+    glEnd();
+
+    glEnable(GL_DEPTH_TEST); // Reativa o teste de profundidade após desenhar o fundo
+    
+    glPopAttrib();
+}
+
+void draw_parallelepiped(float width, float height, float depth, bool invertTexture = false) {
+    // Salva o estado atual
+    glPushAttrib(GL_ENABLE_BIT | GL_TEXTURE_BIT | GL_LIGHTING_BIT);
+
+    // Ativa a textura
+    glBindTexture(GL_TEXTURE_2D, pipeTexture);
+    glEnable(GL_TEXTURE_2D);
+
+    // Configuracao do material para os canos
+    GLfloat materialAmbient[] = {0.1f, 0.5f, 0.0f, 1.0f}; // Verde suave para a luz ambiente
+    GLfloat materialDiffuse[] = {0.0f, 0.8f, 0.0f, 1.0f}; // Verde para a luz difusa
+    GLfloat materialSpecular[] = {0.0f, 0.3f, 0.0f, 1.0f}; // Verde suave para o brilho especular
+    GLfloat materialShininess[] = {20.0f}; // Brilho especular mais alto para suavizar sombras
+
+    glMaterialfv(GL_FRONT, GL_AMBIENT, materialAmbient);
+    glMaterialfv(GL_FRONT, GL_DIFFUSE, materialDiffuse);
+    glMaterialfv(GL_FRONT, GL_SPECULAR, materialSpecular);
+    glMaterialfv(GL_FRONT, GL_SHININESS, materialShininess);
+
     glBegin(GL_QUADS);
 
     // Front face
+    glNormal3f(0.0f, 0.0f, 1.0f);
+    glTexCoord2f(0.0f, invertTexture ? 1.0f : 0.0f);
     glVertex3f(-width / 2, -height / 2, depth / 2);
+    glTexCoord2f(1.0f, invertTexture ? 1.0f : 0.0f);
     glVertex3f(width / 2, -height / 2, depth / 2);
+    glTexCoord2f(1.0f, invertTexture ? 0.0f : 1.0f);
     glVertex3f(width / 2, height / 2, depth / 2);
+    glTexCoord2f(0.0f, invertTexture ? 0.0f : 1.0f);
     glVertex3f(-width / 2, height / 2, depth / 2);
 
     // Back face
+    glNormal3f(0.0f, 0.0f, -1.0f);
+    glTexCoord2f(0.0f, invertTexture ? 1.0f : 0.0f);
     glVertex3f(-width / 2, -height / 2, -depth / 2);
+    glTexCoord2f(1.0f, invertTexture ? 1.0f : 0.0f);
     glVertex3f(width / 2, -height / 2, -depth / 2);
+    glTexCoord2f(1.0f, invertTexture ? 0.0f : 1.0f);
     glVertex3f(width / 2, height / 2, -depth / 2);
+    glTexCoord2f(0.0f, invertTexture ? 0.0f : 1.0f);
     glVertex3f(-width / 2, height / 2, -depth / 2);
 
     // Left face
+    glNormal3f(-1.0f, 0.0f, 0.0f);
+    glTexCoord2f(0.0f, invertTexture ? 1.0f : 0.0f);
     glVertex3f(-width / 2, -height / 2, -depth / 2);
+    glTexCoord2f(1.0f, invertTexture ? 1.0f : 0.0f);
     glVertex3f(-width / 2, -height / 2, depth / 2);
+    glTexCoord2f(1.0f, invertTexture ? 0.0f : 1.0f);
     glVertex3f(-width / 2, height / 2, depth / 2);
+    glTexCoord2f(0.0f, invertTexture ? 0.0f : 1.0f);
     glVertex3f(-width / 2, height / 2, -depth / 2);
 
     // Right face
+    glNormal3f(1.0f, 0.0f, 0.0f);
+    glTexCoord2f(0.0f, invertTexture ? 1.0f : 0.0f);
     glVertex3f(width / 2, -height / 2, -depth / 2);
+    glTexCoord2f(1.0f, invertTexture ? 1.0f : 0.0f);
     glVertex3f(width / 2, -height / 2, depth / 2);
+    glTexCoord2f(1.0f, invertTexture ? 0.0f : 1.0f);
     glVertex3f(width / 2, height / 2, depth / 2);
+    glTexCoord2f(0.0f, invertTexture ? 0.0f : 1.0f);
     glVertex3f(width / 2, height / 2, -depth / 2);
 
     // Top face
+    glNormal3f(0.0f, 1.0f, 0.0f);
+    glTexCoord2f(0.0f, invertTexture ? 1.0f : 0.0f);
     glVertex3f(-width / 2, height / 2, -depth / 2);
+    glTexCoord2f(1.0f, invertTexture ? 1.0f : 0.0f);
     glVertex3f(width / 2, height / 2, -depth / 2);
+    glTexCoord2f(1.0f, invertTexture ? 0.0f : 1.0f);
     glVertex3f(width / 2, height / 2, depth / 2);
+    glTexCoord2f(0.0f, invertTexture ? 0.0f : 1.0f);
     glVertex3f(-width / 2, height / 2, depth / 2);
 
     // Bottom face
+    glNormal3f(0.0f, -1.0f, 0.0f);
+    glTexCoord2f(0.0f, invertTexture ? 1.0f : 0.0f);
     glVertex3f(-width / 2, -height / 2, -depth / 2);
+    glTexCoord2f(1.0f, invertTexture ? 1.0f : 0.0f);
     glVertex3f(width / 2, -height / 2, -depth / 2);
+    glTexCoord2f(1.0f, invertTexture ? 0.0f : 1.0f);
     glVertex3f(width / 2, -height / 2, depth / 2);
+    glTexCoord2f(0.0f, invertTexture ? 0.0f : 1.0f);
     glVertex3f(-width / 2, -height / 2, depth / 2);
 
     glEnd();
+
+    glPopAttrib();
 }
 
 void drawText(float x, float y, const char* text) {
     glRasterPos2f(x, y);
+
     while (*text) {
         glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, *text);
         text++;
     }
 }
 
-// Função para verificar colisões
 bool check_collision(float px, float py, float psize, float ex, float ey, float ewidth, float eheight, float edepth) {
-    // Bounding Box do Passaro (um cubo)
-    float pxMin = px - psize / 2;
-    float pxMax = px + psize / 2;
-    float pyMin = py - psize / 2;
-    float pyMax = py + psize / 2;
+    // Fator de ajuste para aumentar a caixa de colisão do pássaro
+    float collision_margin = -0.02f; 
+    float pipe_collision_margin = 0.02f; 
 
-    // Bounding Box do Cano (um paralelepipedo)
-    float exMin = ex - ewidth / 2;
-    float exMax = ex + ewidth / 2;
-    float eyMin = ey - eheight / 2;
-    float eyMax = ey + eheight / 2;
+    // Bounding Box do Passaro 
+    float pxMin = px - (psize + collision_margin) / 2;
+    float pxMax = px + (psize + collision_margin) / 2;
+    float pyMin = py - (psize + collision_margin) / 2;
+    float pyMax = py + (psize + collision_margin) / 2;
+
+    // Bounding Box do Cano 
+    float exMin = ex - (ewidth + pipe_collision_margin) / 2;
+    float exMax = ex + (ewidth + pipe_collision_margin) / 2;
+    float eyMin = ey - (eheight + pipe_collision_margin) / 2;
+    float eyMax = ey + (eheight + pipe_collision_margin) / 2;
 
     // Verifica se os bounding boxes se sobrepõem
     return !(pxMax < exMin || pxMin > exMax || pyMax < eyMin || pyMin > eyMax);
 }
 
-// Função para desenhar a cena
+void drawBird() {
+    // Material do pássaro
+    GLfloat birdBodyAmbient[] = {1.0f, 1.0f, 0.0f, 1.0f}; 
+    GLfloat birdBodyDiffuse[] = {1.0f, 1.0f, 0.0f, 1.0f}; 
+    GLfloat birdBodySpecular[] = {1.0f, 1.0f, 1.0f, 1.0f}; 
+    GLfloat birdBodyShininess[] = {50.0f}; 
+
+    // Aplicar as propriedades do material do corpo do pássaro
+    glMaterialfv(GL_FRONT, GL_AMBIENT, birdBodyAmbient);
+    glMaterialfv(GL_FRONT, GL_DIFFUSE, birdBodyDiffuse);
+    glMaterialfv(GL_FRONT, GL_SPECULAR, birdBodySpecular);
+    glMaterialfv(GL_FRONT, GL_SHININESS, birdBodyShininess);
+
+    // Desenha o corpo do pássaro
+    glPushMatrix();
+    glTranslatef(0.0f, 0.0f, 0.0f); 
+    glRotatef(0.0f, 0.0f, 1.0f, 0.0f); //Roda a esfera para alinhar com a orientação do pássaro
+    glutSolidSphere(0.1f, 20, 20); 
+    glPopMatrix();
+
+    // Material das asas
+    GLfloat birdWingAmbient[] = {1.0f, 1.0f, 1.0f, 1.0f}; 
+    GLfloat birdWingDiffuse[] = {1.0f, 1.0f, 1.0f, 1.0f}; 
+    GLfloat birdWingSpecular[] = {1.0f, 1.0f, 1.0f, 1.0f};
+    GLfloat birdWingShininess[] = {50.0f}; 
+
+    // Aplicar as propriedades do material das asas
+    glMaterialfv(GL_FRONT, GL_AMBIENT, birdWingAmbient);
+    glMaterialfv(GL_FRONT, GL_DIFFUSE, birdWingDiffuse);
+    glMaterialfv(GL_FRONT, GL_SPECULAR, birdWingSpecular);
+    glMaterialfv(GL_FRONT, GL_SHININESS, birdWingShininess);
+
+    // Desenha a asa esquerda
+    glPushMatrix();
+    glTranslatef(0.0f, 0.0f, -0.11f); 
+    glRotatef(0.0f, 0.0f, 1.0f, 0.0f); 
+    glScalef(0.02f, 0.1f, 0.1f); 
+    glutSolidCube(1.0f); 
+    glPopMatrix();
+
+    // Desenha a asa direita
+    glPushMatrix();
+    glTranslatef(0.0f, 0.0f, 0.11f); 
+    glRotatef(0.0f, 0.0f, 1.0f, 0.0f); 
+    glScalef(0.02f, 0.1f, 0.1f); 
+    glutSolidCube(1.0f); 
+    glPopMatrix();
+
+    // Material do bico e da cauda
+    GLfloat birdBeakTailAmbient[] = {1.0f, 0.5f, 0.0f, 1.0f}; 
+    GLfloat birdBeakTailDiffuse[] = {1.0f, 0.5f, 0.0f, 1.0f}; 
+    GLfloat birdBeakTailSpecular[] = {1.0f, 1.0f, 1.0f, 1.0f}; 
+    GLfloat birdBeakTailShininess[] = {50.0f}; 
+
+    // Aplicar as propriedades do material do bico e da cauda
+    glMaterialfv(GL_FRONT, GL_AMBIENT, birdBeakTailAmbient);
+    glMaterialfv(GL_FRONT, GL_DIFFUSE, birdBeakTailDiffuse);
+    glMaterialfv(GL_FRONT, GL_SPECULAR, birdBeakTailSpecular);
+    glMaterialfv(GL_FRONT, GL_SHININESS, birdBeakTailShininess);
+
+    // Desenha o bico
+    glPushMatrix();
+    glTranslatef(0.1f, 0.0f, 0.0f); 
+    glScalef(0.05f, 0.02f, 0.1f); 
+    glutSolidCube(1.0f); 
+    glPopMatrix();
+
+    // Desenha a cauda
+    glPushMatrix();
+    glTranslatef(-0.15f, 0.0f, 0.0f); 
+    glRotatef(90.0f, 0.0f, 1.0f, 0.0f); 
+    glutSolidCone(0.05f, 0.1f, 20, 20); 
+    glPopMatrix();
+
+    // Material dos olhos
+    GLfloat birdEyeAmbient[] = {0.0f, 0.0f, 0.0f, 1.0f}; 
+    GLfloat birdEyeDiffuse[] = {0.0f, 0.0f, 0.0f, 1.0f}; 
+    GLfloat birdEyeSpecular[] = {1.0f, 1.0f, 1.0f, 1.0f}; 
+    GLfloat birdEyeShininess[] = {50.0f}; 
+
+    // Aplicar as propriedades do material dos olhos
+    glMaterialfv(GL_FRONT, GL_AMBIENT, birdEyeAmbient);
+    glMaterialfv(GL_FRONT, GL_DIFFUSE, birdEyeDiffuse);
+    glMaterialfv(GL_FRONT, GL_SPECULAR, birdEyeSpecular);
+    glMaterialfv(GL_FRONT, GL_SHININESS, birdEyeShininess);
+
+    // Desenha o olho esquerdo
+    glPushMatrix();
+    glTranslatef(0.08f, 0.05f, 0.02f); 
+    glutSolidSphere(0.015f, 20, 20); 
+    glPopMatrix();
+
+    // Desenha o olho direito
+    glPushMatrix();
+    glTranslatef(0.08f, 0.05f, -0.02f); 
+    glutSolidSphere(0.015f, 20, 20); 
+    glPopMatrix();
+}
+
+void drawCloud(float x, float y, float z) {
+    glColor4f(1.0f, 1.0f, 1.0f, 0.8f); // Cor branca com transparência
+
+    glPushMatrix();
+    glTranslatef(x, y, z);
+
+    // Desenha várias esferas para criar uma nuvem
+    glutSolidSphere(0.2f, 20, 20);
+
+    glTranslatef(-0.2f, 0.1f, 0.1f);
+    glutSolidSphere(0.15f, 20, 20);
+
+    glTranslatef(0.4f, -0.2f, -0.1f);
+    glutSolidSphere(0.15f, 20, 20);
+
+    glTranslatef(-0.1f, 0.15f, 0.2f);
+    glutSolidSphere(0.1f, 20, 20);
+
+    glTranslatef(0.1f, 0.05f, -0.3f);
+    glutSolidSphere(0.12f, 20, 20);
+
+    glPopMatrix();
+}
+
+void drawClouds() {
+    glEnable(GL_LIGHTING);  // Habilita a iluminação
+
+    // Material para as nuvens
+    GLfloat ambient[] = { 0.7f, 0.7f, 0.7f, 1.0f };
+    GLfloat diffuse[] = { 1.0f, 1.0f, 1.0f, 1.0f };
+    GLfloat specular[] = { 0.8f, 0.8f, 0.8f, 1.0f };
+    GLfloat shininess = 50.0f;  
+
+    glMaterialfv(GL_FRONT, GL_AMBIENT, ambient);
+    glMaterialfv(GL_FRONT, GL_DIFFUSE, diffuse);
+    glMaterialfv(GL_FRONT, GL_SPECULAR, specular);
+    glMaterialf(GL_FRONT, GL_SHININESS, shininess);
+
+    // Desenha as nuvens com sombreamento
+    for (int i = 0; i < NUM_CLOUDS; ++i) {
+        glPushMatrix();
+        glTranslatef(clouds[i].x, clouds[i].y, clouds[i].z);
+        drawCloud(0.0f, 0.0f, 0.0f);
+        glPopMatrix();
+    }
+}
+
+// Atualiza a posição das nuvens
+void updateClouds() {
+    for (int i = 0; i < NUM_CLOUDS; ++i) {
+        clouds[i].x -= clouds[i].speed;
+        if (clouds[i].x < -5.0f) {
+            clouds[i].x = 5.0f;
+            clouds[i].y = ((rand() % 100) / 100.0f) * 2.0f - 1.0f;
+        }
+    }
+}
+
+// Nuvens iniciais
+void initClouds() {
+    for (int i = 0; i < NUM_CLOUDS; ++i) {
+        clouds[i].x = ((rand() % 100) / 100.0f) * 12.0f - 6.0f; 
+        clouds[i].y = ((rand() % 100) / 100.0f) * 2.0f - 1.0f;
+        clouds[i].z = -2.0f - ((rand() % 100) / 100.0f);
+        clouds[i].speed = 0.001f + ((rand() % 100) / 10000.0f);
+    }
+}
+
 void display(void) {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glLoadIdentity();
 
-    glTranslatef(0.0f, 0.0f, -3.0f);
+    draw_background_square();
+    glTranslatef(0.0f, 0.0f, -5.0f); // Posiciona a câmera um pouco mais longe
+
+    drawClouds();  // Desenha as nuvens primeiro, para que fiquem no fundo
+    updateClouds();
+
+    glTranslatef(0.0f, 0.0f, 2.0f); // Avança um pouco para os elementos do jogo
 
     if (!gameOver) {
-        // Desenha o pássaro (cubo amarelo)
         glPushMatrix();
         glTranslatef(birdX, birdY, 0.0f);
-        glColor3f(1.0f, 1.0f, 0.0f);
-        glutSolidCube(birdSize);
+        drawBird(); // Desenha o pássaro 
         glPopMatrix();
 
-        // Desenha os canos (paralelepípedos verdes)
+        // Desenha os canos 
         for (int i = 0; i < PIPE_COUNT; ++i) {
-            // Cano superior
+            //Superior
             glPushMatrix();
             glTranslatef(pipePositions[i], pipeGapY[i] + pipeGapSize + PIPE_HEIGHT / 2, 0.0f);
-            glColor3f(0.0f, 1.0f, 0.0f);
-            draw_parallelepiped(PIPE_WIDTH, PIPE_HEIGHT, PIPE_DEPTH);
+            draw_parallelepiped(PIPE_WIDTH, PIPE_HEIGHT, PIPE_DEPTH, false);
             glPopMatrix();
-
-            // Cano inferior
+        
+            //Inferior
             glPushMatrix();
             glTranslatef(pipePositions[i], pipeGapY[i] - pipeGapSize - PIPE_HEIGHT / 2, 0.0f);
-            glColor3f(0.0f, 1.0f, 0.0f);
-            draw_parallelepiped(PIPE_WIDTH, PIPE_HEIGHT, PIPE_DEPTH);
+            draw_parallelepiped(PIPE_WIDTH, PIPE_HEIGHT, PIPE_DEPTH, true);
             glPopMatrix();
         }
 
@@ -195,23 +532,54 @@ void display(void) {
         glColor3f(0.0f, 0.0f, 0.0f);
         char scoreText[50];
         sprintf(scoreText, "Score: %d", score);
-        drawText(-1.0f, 1.0f, scoreText);  // Ajuste a posição conforme necessário
+        glMatrixMode(GL_PROJECTION);
+        glPushMatrix();
+        glLoadIdentity();
+        gluOrtho2D(0.0, 1.0, 0.0, 1.0); // Coordenadas para a pontuação
+        glMatrixMode(GL_MODELVIEW);
+        glPushMatrix();
+        glLoadIdentity();
+        glRasterPos2f(0.8f, 0.9f);  // Posição no canto superior direito
+        drawText(0.0f, 0.0f, scoreText);
+        glPopMatrix();
+        glMatrixMode(GL_PROJECTION);
+        glPopMatrix();
+        glMatrixMode(GL_MODELVIEW);
     } else {
-        // Texto de Game Over
+        // Mensagem combinada de Game Over e reinício
         glColor3f(0.0f, 0.0f, 0.0f);
-        const char* gameOverText = "Game Over! Press 'R' to Restart!";
-        int textWidth = 0;
+        char gameOverText[100];
+        
+        sprintf(gameOverText, "Game Over! Pressione 'R' para reiniciar!");
 
-        // Calcula a largura do texto
-        for (const char* c = gameOverText; *c; ++c) {
-            textWidth += glutBitmapWidth(GLUT_BITMAP_HELVETICA_18, *c);
+        // Configuração de projeção para centralizar o texto
+        glMatrixMode(GL_PROJECTION);
+        glPushMatrix();
+        glLoadIdentity();
+        gluOrtho2D(0.0, 1.0, 0.0, 1.0); 
+        glMatrixMode(GL_MODELVIEW);
+        glPushMatrix();
+        glLoadIdentity();
+
+        // Centraliza o texto
+        float textWidth = 0.0f;
+        const char* tempText = gameOverText;
+        while (*tempText) {
+            textWidth += glutBitmapWidth(GLUT_BITMAP_HELVETICA_18, *tempText);
+            tempText++;
         }
 
-        // Centraliza o texto horizontalmente
-        float x = (800 - textWidth) / 2.0f;
-        float y = 300; // Ajuste a posição conforme necessário
+        float centerX = 0.5f; // Centraliza horizontalmente
+        float centerY = 0.5f; // Centraliza verticalmente
 
-        drawText(x, y, gameOverText);
+        glRasterPos2f(centerX - textWidth / 2 / 800.0f, centerY);  // Ajuste de acordo com a resolução
+
+        drawText(0.0f, 0.0f, gameOverText);
+
+        glPopMatrix();
+        glMatrixMode(GL_PROJECTION);
+        glPopMatrix();
+        glMatrixMode(GL_MODELVIEW);
     }
 
     glutSwapBuffers();
@@ -221,7 +589,7 @@ void display(void) {
 void reshape(int w, int h) {
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
-    gluPerspective(60.0, (GLfloat)w / (GLfloat)h, 1.0, 100.0); // Increased view distance
+    gluPerspective(60.0, (GLfloat)w / (GLfloat)h, 1.0, 100.0); 
     glMatrixMode(GL_MODELVIEW);
 }
 
@@ -231,43 +599,54 @@ void timer(int value) {
         birdVelocity -= GRAVITY;
         birdY += birdVelocity;
 
-        // Atualiza a posição horizontal do pássaro
+        // Atualiza a posicao horizontal do passaro
         for (int i = 0; i < PIPE_COUNT; ++i) {
-            pipePositions[i] -= 0.05f; // Atualizado para novo PIPE_SPACING
+            pipePositions[i] -= 0.025f; 
 
             // Verifica se o cano saiu da tela
             if (pipePositions[i] < -3.0f) { // Atualizado para novo PIPE_SPACING
                 pipePositions[i] += PIPE_COUNT * PIPE_SPACING;
                 pipeGapY[i] = ((rand() % 100) / 100.0f) * 2.0f - 1.0f;
-                passedPipe[i] = false; // Reset flag
+                passedPipe[i] = false; 
             }
 
-            // Verifica se o pássaro passou pelo cano
+            // Verifica se o passaro passou pelo cano
             for (int j = 0; j < PIPE_COUNT; ++j) {
-                // Verifica se o pássaro está na mesma posição horizontal que o cano
+                // Verifica se o passaro esta na mesma posicao horizontal que o cano
                 if (pipePositions[j] < birdX + birdSize / 2 && pipePositions[j] > birdX - birdSize / 2) {
-                    // Verifica colisão com a parte superior do cano
+                    // Verifica colisao com a parte superior do cano
                     if (check_collision(birdX, birdY, birdSize, pipePositions[j], pipeGapY[j] + pipeGapSize + PIPE_HEIGHT / 2, PIPE_WIDTH, PIPE_HEIGHT, PIPE_DEPTH)) {
+                    	mciSendString(TEXT("stop bgm"), NULL, 0, NULL);
+	  	  	            mciSendString(TEXT("close bgm"), NULL, 0, NULL);
+                    	PlaySound(TEXT("gameover.wav"), NULL, SND_ASYNC);
                         gameOver = true;
                         break;
                     }
-                    // Verifica colisão com a parte inferior do cano
+                    // Verifica colisao com a parte inferior do cano
                     if (check_collision(birdX, birdY, birdSize, pipePositions[j], pipeGapY[j] - pipeGapSize - PIPE_HEIGHT / 2, PIPE_WIDTH, PIPE_HEIGHT, PIPE_DEPTH)) {
+                    	mciSendString(TEXT("stop bgm"), NULL, 0, NULL);
+ 	 	 	 	 	 	 mciSendString(TEXT("close bgm"), NULL, 0, NULL);
+                    	PlaySound(TEXT("gameover.wav"), NULL, SND_ASYNC);
                         gameOver = true;
                         break;
                     }
                 }
             }
 
-            // Incrementa o score se o pássaro passou pelo cano
+            // Incrementa o score se o passaro passou pelo cano
             if (!passedPipe[i] && pipePositions[i] < birdX - birdSize / 2) {
                 passedPipe[i] = true;
                 score++;
+                PlaySound(TEXT("score.wav"), NULL, SND_ASYNC);
+                
             }
         }
 
-        // Verifica se o pássaro saiu da tela
+        // Verifica se o passaro saiu da tela
         if (birdY - birdSize / 2 < -1.5f || birdY + birdSize / 2 > 1.5f) {
+        	mciSendString(TEXT("stop bgm"), NULL, 0, NULL);
+            mciSendString(TEXT("close bgm"), NULL, 0, NULL);
+     	    PlaySound(TEXT("gameover.wav"), NULL, SND_ASYNC);
             gameOver = true;
         }
     }
@@ -290,6 +669,9 @@ void keyboard(unsigned char key, int x, int y) {
         case 'r': // Reiniciar o jogo
             if (gameOver) {
                 resetGame();
+                mciSendString(TEXT("open \"music.wav\" type mpegvideo alias bgm"), NULL, 0, NULL);
+    			mciSendString(TEXT("play bgm repeat"), NULL, 0, NULL);
+    			
             }
             break;
     }
@@ -297,6 +679,7 @@ void keyboard(unsigned char key, int x, int y) {
 
 // Função para reiniciar o jogo
 void resetGame(void) {
+	
     birdY = 0.0f;
     birdVelocity = 0.0f;
     birdX = -1.0f;
@@ -305,8 +688,7 @@ void resetGame(void) {
     for (int i = 0; i < PIPE_COUNT; ++i) {
         pipePositions[i] = i * PIPE_SPACING + 1.0f;
         pipeGapY[i] = ((rand() % 100) / 100.0f) * 2.0f - 1.0f;
-        passedPipe[i] = false; // Reset flag
+        passedPipe[i] = false; 
     }
-
     gameOver = false;
 }
