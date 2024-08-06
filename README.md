@@ -22,7 +22,10 @@ Este é um projeto de um jogo em 3D desenvolvido utilizando a biblioteca OpenGL.
 3. Execute o arquivo de instalação e siga as instruções na tela.
 4. Após a instalação, execute o jogo e divirta-se!
 
-# Game View
+##  Game View
+
+![image](https://github.com/user-attachments/assets/ebedf777-95e0-4013-9b92-98a124b9b02a)
+
 
 
 
