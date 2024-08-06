@@ -29,7 +29,7 @@
 
 #define ESC 27  // Tecla ESC
 #define PIPE_COUNT 3 // N√∫mero de canos
-#define PIPE_SPACING 3.0f   // Espa√ßamento entre os canos
+#define PIPE_SPACING 3.0f   // EspaÁamento entre os canos
 #define PIPE_WIDTH 0.4f  // Largura do cano
 #define PIPE_HEIGHT 2.5f  // Altura do cano
 #define PIPE_DEPTH 0.2f  // Profundidade do cano
@@ -40,21 +40,20 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
-float birdY = 0.0f; // Posi√ß√£o inicial do p√°ssaro
-float birdVelocity = 0.0f; // Velocidade inicial do p√°ssaro
-float birdSize = 0.1f; // Tamanho do p√°ssaro
-float birdX = -1.0f; // Posi√ß√£o horizontal do p√°ssaro
+float birdY = 0.0f; // PosiÁ„o inicial do passaro
+float birdVelocity = 0.0f; // Velocidade inicial do pass·ro
+float birdSize = 0.1f; // Tamanho do pass·ro
+float birdX = -1.0f; // PosiÁ„o horizontal do pass·ro
 
-float pipePositions[PIPE_COUNT]; // Posi√ß√µes horizontais dos canos
-float pipeGapY[PIPE_COUNT]; // Posi√ß√µes verticais do gap entre os canos
+float pipePositions[PIPE_COUNT]; // PosiÁıes horizontais dos canos
+float pipeGapY[PIPE_COUNT]; // PosiÁıes verticais do gap entre os canos
 float pipeGapSize = 0.4f; // Tamanho do gap entre os canos
 
 bool gameOver = false; // Flag para indicar o fim do jogo
 
-int score = 0; // Pontua√ß√£o do jogador
+int score = 0; // PontuaÁ„o do jogador
 
 GLuint pipeTexture; // Textura dos canos
-GLuint birdTexture; // Textura do p√°ssaro
 GLuint backgroundTexture; // Textura do fundo
 
 // Estrutura para representar as nuvens
@@ -67,48 +66,59 @@ struct Cloud {
 const int NUM_CLOUDS = 8;
 Cloud clouds[NUM_CLOUDS];
 
-// Flag para verificar se o p√°ssaro passou por um cano
+// Flag para verificar se o p·ssaro passou por um cano
 bool passedPipe[PIPE_COUNT] = { false };
 
-// Declara√ß√£o das fun√ß√µes
+// DeclaraÁ„o das funÁıes
 void init_glut(const char *window_name, int argc, char** argv);
 void display(void);
 void reshape(int w, int h);
 void timer(int value);
 void keyboard(unsigned char key, int x, int y);
 void resetGame(void);
-void draw_parallelepiped(float width, float height, float depth);  // Function added
-bool check_collision(float px, float py, float psize, float ex, float ey, float ewidth, float eheight, float edepth); // Function added
+void draw_parallelepiped(float width, float height, float depth);  
+bool check_collision(float px, float py, float psize, float ex, float ey, float ewidth, float eheight, float edepth); 
 void initClouds();
+GLuint loadTexture(const char* filename);
 
-// Fun√ß√£o para carregar texturas
+// FunÁ„o para carregar texturas
 GLuint loadTexture(const char* filename) {
+	//Nome da textura
     GLuint textureID;
+    
+    //para armazenar a largura, altura e os canais de cor
     int width, height, nrChannels;
+    
+    //ponteiro para os dados da imagem
     unsigned char* data = stbi_load(filename, &width, &height, &nrChannels, 0);
-
+	
+	//caso n„o seja carregada com sucesso
     if (!data) {
         fprintf(stderr, "Failed to load texture\n");
         return 0;
     }
-
+	
+	//para identificar a textura
     glGenTextures(1, &textureID);
+    
+    //vincular uma textura a um alvo especifÌco
     glBindTexture(GL_TEXTURE_2D, textureID);
 
     // Configura a textura
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE); // Usando GL_CLAMP_TO_EDGE
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE); // Usando GL_CLAMP_TO_EDGE
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR); // para filtrar e suavizar a imagem
+    
+	
+	//liberar memÛria alocada
     stbi_image_free(data);
+    
+    //retorna o identificador da textura
     return textureID;
 }
 
 
 int main(int argc, char** argv) {
-    // Inicializa a semente do gerador de numeros aleatorios
+    // Inicializa a semente do gerador de n˙meros aleatorios
     srand(static_cast<unsigned>(time(0)));
 
     // Inicializa as posicoes dos canos
@@ -133,7 +143,7 @@ int main(int argc, char** argv) {
     return EXIT_SUCCESS;
 }
 
-// Fun√ß√£o para inicializar o GLUT
+// FunÁ„o para inicializar o GLUT
 void init_glut(const char *window_name, int argc, char** argv) {
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_RGB | GLUT_DOUBLE | GLUT_DEPTH);
@@ -146,16 +156,17 @@ void init_glut(const char *window_name, int argc, char** argv) {
     glutReshapeFunc(reshape);
     glutTimerFunc(16, timer, 0);
     
+    //aplicar texturas nos canos e no background
 	pipeTexture = loadTexture("canos.png");
 	backgroundTexture = loadTexture("bg.png");
 	
+	
     glEnable(GL_DEPTH_TEST);
-    glClearColor(0.5f, 0.7f, 1.0f, 1.0f); // Lighter blue background
-
     initClouds();
 
     // Configuracao da iluminacao
     glEnable(GL_LIGHTING);
+    //fonte de luz
     glEnable(GL_LIGHT0);
 
     // Configuracao da luz ambiente
@@ -176,29 +187,25 @@ void init_glut(const char *window_name, int argc, char** argv) {
 }
 
 void draw_background_square() {
+	//para n„o perder os estados atuais de textura e iluminaÁ„o
     glPushAttrib(GL_ENABLE_BIT | GL_TEXTURE_BIT | GL_LIGHTING_BIT);
-    glDisable(GL_DEPTH_TEST); // Desativa o teste de profundidade para garantir que o quadrado seja desenhado atr√°s de tudo
+    glDisable(GL_DEPTH_TEST); // Desativa o teste de profundidade para garantir que o quadrado seja desenhado atras de tudo
     
+    //para usar a textura "background" aqui
     glBindTexture(GL_TEXTURE_2D, backgroundTexture);
     glEnable(GL_TEXTURE_2D);
 
     // Configura o material para um brilho mais alto
-    GLfloat materialAmbient[] = {1.5f, 1.5f, 1.5f, 1.0f}; 
-    GLfloat materialDiffuse[] = {1.5f, 1.5f, 1.5f, 1.0f}; 
-    GLfloat materialSpecular[] = {1.0f, 1.0f, 1.0f, 1.0f}; 
-    GLfloat materialShininess[] = {3.0f}; 
-
+    GLfloat materialAmbient[] = {2.5f, 2.5f, 2.5f, 2.0f}; 
     glMaterialfv(GL_FRONT, GL_AMBIENT, materialAmbient);
-    glMaterialfv(GL_FRONT, GL_DIFFUSE, materialDiffuse);
-    glMaterialfv(GL_FRONT, GL_SPECULAR, materialSpecular);
-    glMaterialfv(GL_FRONT, GL_SHININESS, materialShininess);
+    
 
     // Desenha um quadrado com a textura
     glBegin(GL_QUADS);
-    glTexCoord2f(0.0f, 1.0f); glVertex3f(-1.0f, -0.8f, -1.0f); // V√©rtice inferior esquerdo ajustado
-    glTexCoord2f(1.0f, 1.0f); glVertex3f(1.0f, -0.8f, -1.0f); // V√©rtice inferior direito ajustado
-    glTexCoord2f(1.0f, 0.0f); glVertex3f(1.0f, 1.0f, -1.0f); // V√©rtice superior direito
-    glTexCoord2f(0.0f, 0.0f); glVertex3f(-1.0f, 1.0f, -1.0f); // V√©rtice superior esquerdo
+    glTexCoord2f(0.0f, 1.0f); glVertex3f(-1.0f, -0.8f, -1.0f); // Vertice inferior esquerdo 
+    glTexCoord2f(1.0f, 1.0f); glVertex3f(1.0f, -0.8f, -1.0f); // Vertice inferior direito 
+    glTexCoord2f(1.0f, 0.0f); glVertex3f(1.0f, 1.0f, -1.0f); // Vertice superior direito
+    glTexCoord2f(0.0f, 0.0f); glVertex3f(-1.0f, 1.0f, -1.0f); // Vrtice superior esquerdo
     glEnd();
 
     glEnable(GL_DEPTH_TEST); // Reativa o teste de profundidade ap√≥s desenhar o fundo
@@ -218,7 +225,7 @@ void draw_parallelepiped(float width, float height, float depth, bool invertText
     GLfloat materialAmbient[] = {0.1f, 0.5f, 0.0f, 1.0f}; // Verde suave para a luz ambiente
     GLfloat materialDiffuse[] = {0.0f, 0.8f, 0.0f, 1.0f}; // Verde para a luz difusa
     GLfloat materialSpecular[] = {0.0f, 0.3f, 0.0f, 1.0f}; // Verde suave para o brilho especular
-    GLfloat materialShininess[] = {20.0f}; // Brilho especular mais alto para suavizar sombras
+    GLfloat materialShininess[] = {3.0f}; // Brilho especular mais alto para suavizar sombras
 
     glMaterialfv(GL_FRONT, GL_AMBIENT, materialAmbient);
     glMaterialfv(GL_FRONT, GL_DIFFUSE, materialDiffuse);
@@ -308,7 +315,7 @@ void drawText(float x, float y, const char* text) {
 }
 
 bool check_collision(float px, float py, float psize, float ex, float ey, float ewidth, float eheight, float edepth) {
-    // Fator de ajuste para aumentar a caixa de colis√£o do p√°ssaro
+    // Fator de ajuste para aumentar a caixa de colis„o do passaro
     float collision_margin = -0.02f; 
     float pipe_collision_margin = 0.02f; 
 
@@ -324,27 +331,27 @@ bool check_collision(float px, float py, float psize, float ex, float ey, float 
     float eyMin = ey - (eheight + pipe_collision_margin) / 2;
     float eyMax = ey + (eheight + pipe_collision_margin) / 2;
 
-    // Verifica se os bounding boxes se sobrep√µem
+    // Verifica se os bounding boxes se sobrepıem
     return !(pxMax < exMin || pxMin > exMax || pyMax < eyMin || pyMin > eyMax);
 }
 
 void drawBird() {
-    // Material do p√°ssaro
+    // Material do p·ssaro
     GLfloat birdBodyAmbient[] = {1.0f, 1.0f, 0.0f, 1.0f}; 
     GLfloat birdBodyDiffuse[] = {1.0f, 1.0f, 0.0f, 1.0f}; 
     GLfloat birdBodySpecular[] = {1.0f, 1.0f, 1.0f, 1.0f}; 
     GLfloat birdBodyShininess[] = {50.0f}; 
 
-    // Aplicar as propriedades do material do corpo do p√°ssaro
+    // Aplicar as propriedades do material do corpo do p·ssaro
     glMaterialfv(GL_FRONT, GL_AMBIENT, birdBodyAmbient);
     glMaterialfv(GL_FRONT, GL_DIFFUSE, birdBodyDiffuse);
     glMaterialfv(GL_FRONT, GL_SPECULAR, birdBodySpecular);
     glMaterialfv(GL_FRONT, GL_SHININESS, birdBodyShininess);
 
-    // Desenha o corpo do p√°ssaro
+    // Desenha o corpo do p·ssaro
     glPushMatrix();
     glTranslatef(0.0f, 0.0f, 0.0f); 
-    glRotatef(0.0f, 0.0f, 1.0f, 0.0f); //Roda a esfera para alinhar com a orienta√ß√£o do p√°ssaro
+    glRotatef(0.0f, 0.0f, 1.0f, 0.0f); //Roda a esfera para alinhar com a orientaÁ„o do p·ssaro
     glutSolidSphere(0.1f, 20, 20); 
     glPopMatrix();
 
@@ -452,7 +459,7 @@ void drawCloud(float x, float y, float z) {
 }
 
 void drawClouds() {
-    glEnable(GL_LIGHTING);  // Habilita a ilumina√ß√£o
+    glEnable(GL_LIGHTING);  // Habilita a iluminaÁ„o
 
     // Material para as nuvens
     GLfloat ambient[] = { 0.7f, 0.7f, 0.7f, 1.0f };
@@ -474,7 +481,7 @@ void drawClouds() {
     }
 }
 
-// Atualiza a posi√ß√£o das nuvens
+// Atualiza a posiÁ„o das nuvens
 void updateClouds() {
     for (int i = 0; i < NUM_CLOUDS; ++i) {
         clouds[i].x -= clouds[i].speed;
@@ -498,14 +505,15 @@ void initClouds() {
 void display(void) {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glLoadIdentity();
-
+	
+	//desenhar o background
     draw_background_square();
-    glTranslatef(0.0f, 0.0f, -5.0f); // Posiciona a c√¢mera um pouco mais longe
+    glTranslatef(0.0f, 0.0f, -5.0f); // Posiciona a c‚mera um pouco mais longe
 
     drawClouds();  // Desenha as nuvens primeiro, para que fiquem no fundo
     updateClouds();
 
-    glTranslatef(0.0f, 0.0f, 2.0f); // Avan√ßa um pouco para os elementos do jogo
+    glTranslatef(0.0f, 0.0f, 2.0f); // AvanÁa um pouco para os elementos do jogo
 
     if (!gameOver) {
         glPushMatrix();
@@ -528,31 +536,31 @@ void display(void) {
             glPopMatrix();
         }
 
-        // Desenha a pontua√ß√£o
+        // Desenha a pontuaÁ„o
         glColor3f(0.0f, 0.0f, 0.0f);
         char scoreText[50];
         sprintf(scoreText, "Score: %d", score);
         glMatrixMode(GL_PROJECTION);
         glPushMatrix();
         glLoadIdentity();
-        gluOrtho2D(0.0, 1.0, 0.0, 1.0); // Coordenadas para a pontua√ß√£o
+        gluOrtho2D(0.0, 1.0, 0.0, 1.0); // Coordenadas para a pontuaÁ„o
         glMatrixMode(GL_MODELVIEW);
         glPushMatrix();
         glLoadIdentity();
-        glRasterPos2f(0.8f, 0.9f);  // Posi√ß√£o no canto superior direito
+        glRasterPos2f(0.8f, 0.9f);  // PosiÁ„o no canto superior direito
         drawText(0.0f, 0.0f, scoreText);
         glPopMatrix();
         glMatrixMode(GL_PROJECTION);
         glPopMatrix();
         glMatrixMode(GL_MODELVIEW);
     } else {
-        // Mensagem combinada de Game Over e rein√≠cio
+        // Mensagem combinada de Game Over e reinicio
         glColor3f(0.0f, 0.0f, 0.0f);
         char gameOverText[100];
         
         sprintf(gameOverText, "Game Over! Pressione 'R' para reiniciar!");
 
-        // Configura√ß√£o de proje√ß√£o para centralizar o texto
+        // ConfiguraÁ„o de projeÁ„o para centralizar o texto
         glMatrixMode(GL_PROJECTION);
         glPushMatrix();
         glLoadIdentity();
@@ -572,7 +580,7 @@ void display(void) {
         float centerX = 0.5f; // Centraliza horizontalmente
         float centerY = 0.5f; // Centraliza verticalmente
 
-        glRasterPos2f(centerX - textWidth / 2 / 800.0f, centerY);  // Ajuste de acordo com a resolu√ß√£o
+        glRasterPos2f(centerX - textWidth / 2 / 800.0f, centerY);  // Ajuste de acordo com a resoluÁ„o
 
         drawText(0.0f, 0.0f, gameOverText);
 
@@ -585,7 +593,7 @@ void display(void) {
     glutSwapBuffers();
 }
 
-// Fun√ß√£o para redimensionar a janela
+// FunÁ„o para redimensionar a janela
 void reshape(int w, int h) {
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
@@ -593,7 +601,7 @@ void reshape(int w, int h) {
     glMatrixMode(GL_MODELVIEW);
 }
 
-// Fun√ß√£o para atualizar a cena
+// FunÁ„o para atualizar a cena
 void timer(int value) {
     if (!gameOver) {
         birdVelocity -= GRAVITY;
@@ -626,7 +634,7 @@ void timer(int value) {
                     if (check_collision(birdX, birdY, birdSize, pipePositions[j], pipeGapY[j] - pipeGapSize - PIPE_HEIGHT / 2, PIPE_WIDTH, PIPE_HEIGHT, PIPE_DEPTH)) {
                     	mciSendString(TEXT("stop bgm"), NULL, 0, NULL);
  	 	 	 	 	 	 mciSendString(TEXT("close bgm"), NULL, 0, NULL);
-                    	PlaySound(TEXT("gameover.wav"), NULL, SND_ASYNC);
+                    	 PlaySound(TEXT("gameover.wav"), NULL, SND_ASYNC);
                         gameOver = true;
                         break;
                     }
@@ -655,7 +663,7 @@ void timer(int value) {
     glutTimerFunc(16, timer, 0);
 }
 
-// Fun√ß√£o para tratar eventos do teclado
+// FunÁ„o para tratar eventos do teclado
 void keyboard(unsigned char key, int x, int y) {
     switch (key) {
         case ' ':
@@ -669,6 +677,7 @@ void keyboard(unsigned char key, int x, int y) {
         case 'r': // Reiniciar o jogo
             if (gameOver) {
                 resetGame();
+                //abir musica e reproduzir em loop
                 mciSendString(TEXT("open \"music.wav\" type mpegvideo alias bgm"), NULL, 0, NULL);
     			mciSendString(TEXT("play bgm repeat"), NULL, 0, NULL);
     			
@@ -677,13 +686,13 @@ void keyboard(unsigned char key, int x, int y) {
     }
 }
 
-// Fun√ß√£o para reiniciar o jogo
+// FunÁ„o para reiniciar o jogo
 void resetGame(void) {
 	
     birdY = 0.0f;
     birdVelocity = 0.0f;
     birdX = -1.0f;
-    score = 0; // Reseta a pontua√ß√£o ao reiniciar o jogo
+    score = 0; // Reseta a pontuaÁ„o ao reiniciar o jogo
 
     for (int i = 0; i < PIPE_COUNT; ++i) {
         pipePositions[i] = i * PIPE_SPACING + 1.0f;
