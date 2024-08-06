@@ -29,7 +29,7 @@
 
 #define ESC 27  // Tecla ESC
 #define PIPE_COUNT 3 // NÃºmero de canos
-#define PIPE_SPACING 3.0f   // Espaçamento entre os canos
+#define PIPE_SPACING 3.0f   // Espacamento entre os canos
 #define PIPE_WIDTH 0.4f  // Largura do cano
 #define PIPE_HEIGHT 2.5f  // Altura do cano
 #define PIPE_DEPTH 0.2f  // Profundidade do cano
@@ -40,18 +40,21 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
-float birdY = 0.0f; // Posição inicial do passaro
-float birdVelocity = 0.0f; // Velocidade inicial do passáro
-float birdSize = 0.1f; // Tamanho do passáro
-float birdX = -1.0f; // Posição horizontal do passáro
+// Caminhos das pastas
+const char* soundsPath = "sounds//";
 
-float pipePositions[PIPE_COUNT]; // Posições horizontais dos canos
-float pipeGapY[PIPE_COUNT]; // Posições verticais do gap entre os canos
+float birdY = 0.0f; // Posicao inicial do passaro
+float birdVelocity = 0.0f; // Velocidade inicial do passï¿½ro
+float birdSize = 0.1f; // Tamanho do passï¿½ro
+float birdX = -1.0f; // Posicao horizontal do passï¿½ro
+
+float pipePositions[PIPE_COUNT]; // Posicoes horizontais dos canos
+float pipeGapY[PIPE_COUNT]; // Posicoes verticais do gap entre os canos
 float pipeGapSize = 0.4f; // Tamanho do gap entre os canos
 
 bool gameOver = false; // Flag para indicar o fim do jogo
 
-int score = 0; // Pontuação do jogador
+int score = 0; // Pontuacao do jogador
 
 GLuint pipeTexture; // Textura dos canos
 GLuint backgroundTexture; // Textura do fundo
@@ -66,10 +69,10 @@ struct Cloud {
 const int NUM_CLOUDS = 8;
 Cloud clouds[NUM_CLOUDS];
 
-// Flag para verificar se o pássaro passou por um cano
+// Flag para verificar se o passaro passou por um cano
 bool passedPipe[PIPE_COUNT] = { false };
 
-// Declaração das funções
+// Declaracao das funcoes
 void init_glut(const char *window_name, int argc, char** argv);
 void display(void);
 void reshape(int w, int h);
@@ -81,7 +84,7 @@ bool check_collision(float px, float py, float psize, float ex, float ey, float 
 void initClouds();
 GLuint loadTexture(const char* filename);
 
-// Função para carregar texturas
+// Funcao para carregar texturas
 GLuint loadTexture(const char* filename) {
 	//Nome da textura
     GLuint textureID;
@@ -92,7 +95,7 @@ GLuint loadTexture(const char* filename) {
     //ponteiro para os dados da imagem
     unsigned char* data = stbi_load(filename, &width, &height, &nrChannels, 0);
 	
-	//caso não seja carregada com sucesso
+	//caso nï¿½o seja carregada com sucesso
     if (!data) {
         fprintf(stderr, "Failed to load texture\n");
         return 0;
@@ -101,7 +104,7 @@ GLuint loadTexture(const char* filename) {
 	//para identificar a textura
     glGenTextures(1, &textureID);
     
-    //vincular uma textura a um alvo especifíco
+    //vincular uma textura a um alvo especifï¿½co
     glBindTexture(GL_TEXTURE_2D, textureID);
 
     // Configura a textura
@@ -109,19 +112,18 @@ GLuint loadTexture(const char* filename) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR); // para filtrar e suavizar a imagem
     
 	
-	//liberar memória alocada
+	//liberar memï¿½ria alocada
     stbi_image_free(data);
     
     //retorna o identificador da textura
     return textureID;
 }
 
-
 int main(int argc, char** argv) {
-    // Inicializa a semente do gerador de números aleatorios
+    // Inicializa a semente do gerador de nÃºmeros aleatorios
     srand(static_cast<unsigned>(time(0)));
 
-    // Inicializa as posicoes dos canos
+    // Inicializa as posiÃ§Ãµes dos canos
     for (int i = 0; i < PIPE_COUNT; ++i) {
         pipePositions[i] = i * PIPE_SPACING + 1.0f;
         pipeGapY[i] = ((rand() % 100) / 100.0f) * 2.0f - 1.0f;
@@ -131,19 +133,22 @@ int main(int argc, char** argv) {
     // Inicializa o GLUT
     init_glut("3D Flappy Bird", argc, argv);
 
-    // Reproduz a musica de fundo
-    mciSendString(TEXT("open \"music.wav\" type mpegvideo alias bgm"), NULL, 0, NULL);
-	mciSendString(TEXT("play bgm repeat"), NULL, 0, NULL);
+    std::string musicPath = std::string(soundsPath) + "music.wav"; // Caminho completo para o arquivo de mÃºsica
+    
+    mciSendString(TEXT("close bgm"), NULL, 0, NULL);
 
-    // Carrega a textura dos canos
-    pipeTexture = loadTexture("canos.png");
-    backgroundTexture = loadTexture("bg.png");
+    // Reproduz a mÃºsica de fundo
+    mciSendString(TEXT(("open \"" + musicPath + "\" type mpegvideo alias bgm").c_str()), NULL, 0, NULL);
+    mciSendString(TEXT("play bgm repeat"), NULL, 0, NULL);
+
+    pipeTexture = loadTexture("textures\\canos.png");
+    backgroundTexture = loadTexture("textures\\bg.png");
 
     glutMainLoop();
     return EXIT_SUCCESS;
 }
 
-// Função para inicializar o GLUT
+// Funcao para inicializar o GLUT
 void init_glut(const char *window_name, int argc, char** argv) {
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_RGB | GLUT_DOUBLE | GLUT_DEPTH);
@@ -187,7 +192,7 @@ void init_glut(const char *window_name, int argc, char** argv) {
 }
 
 void draw_background_square() {
-	//para não perder os estados atuais de textura e iluminação
+	//para nao perder os estados atuais de textura e iluminacao
     glPushAttrib(GL_ENABLE_BIT | GL_TEXTURE_BIT | GL_LIGHTING_BIT);
     glDisable(GL_DEPTH_TEST); // Desativa o teste de profundidade para garantir que o quadrado seja desenhado atras de tudo
     
@@ -315,7 +320,7 @@ void drawText(float x, float y, const char* text) {
 }
 
 bool check_collision(float px, float py, float psize, float ex, float ey, float ewidth, float eheight, float edepth) {
-    // Fator de ajuste para aumentar a caixa de colisão do passaro
+    // Fator de ajuste para aumentar a caixa de colisao do passaro
     float collision_margin = -0.02f; 
     float pipe_collision_margin = 0.02f; 
 
@@ -331,27 +336,27 @@ bool check_collision(float px, float py, float psize, float ex, float ey, float 
     float eyMin = ey - (eheight + pipe_collision_margin) / 2;
     float eyMax = ey + (eheight + pipe_collision_margin) / 2;
 
-    // Verifica se os bounding boxes se sobrepõem
+    // Verifica se os bounding boxes se sobrepoem
     return !(pxMax < exMin || pxMin > exMax || pyMax < eyMin || pyMin > eyMax);
 }
 
 void drawBird() {
-    // Material do pássaro
+    // Material do passaro
     GLfloat birdBodyAmbient[] = {1.0f, 1.0f, 0.0f, 1.0f}; 
     GLfloat birdBodyDiffuse[] = {1.0f, 1.0f, 0.0f, 1.0f}; 
     GLfloat birdBodySpecular[] = {1.0f, 1.0f, 1.0f, 1.0f}; 
     GLfloat birdBodyShininess[] = {50.0f}; 
 
-    // Aplicar as propriedades do material do corpo do pássaro
+    // Aplicar as propriedades do material do corpo do pï¿½ssaro
     glMaterialfv(GL_FRONT, GL_AMBIENT, birdBodyAmbient);
     glMaterialfv(GL_FRONT, GL_DIFFUSE, birdBodyDiffuse);
     glMaterialfv(GL_FRONT, GL_SPECULAR, birdBodySpecular);
     glMaterialfv(GL_FRONT, GL_SHININESS, birdBodyShininess);
 
-    // Desenha o corpo do pássaro
+    // Desenha o corpo do passaro
     glPushMatrix();
     glTranslatef(0.0f, 0.0f, 0.0f); 
-    glRotatef(0.0f, 0.0f, 1.0f, 0.0f); //Roda a esfera para alinhar com a orientação do pássaro
+    glRotatef(0.0f, 0.0f, 1.0f, 0.0f); //Roda a esfera para alinhar com a orientacao do passaro
     glutSolidSphere(0.1f, 20, 20); 
     glPopMatrix();
 
@@ -459,7 +464,7 @@ void drawCloud(float x, float y, float z) {
 }
 
 void drawClouds() {
-    glEnable(GL_LIGHTING);  // Habilita a iluminação
+    glEnable(GL_LIGHTING);  // Habilita a iluminacao
 
     // Material para as nuvens
     GLfloat ambient[] = { 0.7f, 0.7f, 0.7f, 1.0f };
@@ -481,7 +486,7 @@ void drawClouds() {
     }
 }
 
-// Atualiza a posição das nuvens
+// Atualiza a posicao das nuvens
 void updateClouds() {
     for (int i = 0; i < NUM_CLOUDS; ++i) {
         clouds[i].x -= clouds[i].speed;
@@ -508,12 +513,12 @@ void display(void) {
 	
 	//desenhar o background
     draw_background_square();
-    glTranslatef(0.0f, 0.0f, -5.0f); // Posiciona a câmera um pouco mais longe
+    glTranslatef(0.0f, 0.0f, -5.0f); // Posiciona a camera um pouco mais longe
 
     drawClouds();  // Desenha as nuvens primeiro, para que fiquem no fundo
     updateClouds();
 
-    glTranslatef(0.0f, 0.0f, 2.0f); // Avança um pouco para os elementos do jogo
+    glTranslatef(0.0f, 0.0f, 2.0f); // Avanca um pouco para os elementos do jogo
 
     if (!gameOver) {
         glPushMatrix();
@@ -536,18 +541,18 @@ void display(void) {
             glPopMatrix();
         }
 
-        // Desenha a pontuação
+        // Desenha a pontuacao
         glColor3f(0.0f, 0.0f, 0.0f);
         char scoreText[50];
         sprintf(scoreText, "Score: %d", score);
         glMatrixMode(GL_PROJECTION);
         glPushMatrix();
         glLoadIdentity();
-        gluOrtho2D(0.0, 1.0, 0.0, 1.0); // Coordenadas para a pontuação
+        gluOrtho2D(0.0, 1.0, 0.0, 1.0); // Coordenadas para a pontuacao
         glMatrixMode(GL_MODELVIEW);
         glPushMatrix();
         glLoadIdentity();
-        glRasterPos2f(0.8f, 0.9f);  // Posição no canto superior direito
+        glRasterPos2f(0.8f, 0.9f);  // Posicao no canto superior direito
         drawText(0.0f, 0.0f, scoreText);
         glPopMatrix();
         glMatrixMode(GL_PROJECTION);
@@ -560,7 +565,7 @@ void display(void) {
         
         sprintf(gameOverText, "Game Over! Pressione 'R' para reiniciar!");
 
-        // Configuração de projeção para centralizar o texto
+        // Configurcao de projecao para centralizar o texto
         glMatrixMode(GL_PROJECTION);
         glPushMatrix();
         glLoadIdentity();
@@ -580,7 +585,7 @@ void display(void) {
         float centerX = 0.5f; // Centraliza horizontalmente
         float centerY = 0.5f; // Centraliza verticalmente
 
-        glRasterPos2f(centerX - textWidth / 2 / 800.0f, centerY);  // Ajuste de acordo com a resolução
+        glRasterPos2f(centerX - textWidth / 2 / 800.0f, centerY);  // Ajuste de acordo com a resolucao
 
         drawText(0.0f, 0.0f, gameOverText);
 
@@ -593,7 +598,7 @@ void display(void) {
     glutSwapBuffers();
 }
 
-// Função para redimensionar a janela
+// Funcao para redimensionar a janela
 void reshape(int w, int h) {
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
@@ -601,7 +606,7 @@ void reshape(int w, int h) {
     glMatrixMode(GL_MODELVIEW);
 }
 
-// Função para atualizar a cena
+// Funcao para atualizar a cena
 void timer(int value) {
     if (!gameOver) {
         birdVelocity -= GRAVITY;
@@ -626,7 +631,7 @@ void timer(int value) {
                     if (check_collision(birdX, birdY, birdSize, pipePositions[j], pipeGapY[j] + pipeGapSize + PIPE_HEIGHT / 2, PIPE_WIDTH, PIPE_HEIGHT, PIPE_DEPTH)) {
                     	mciSendString(TEXT("stop bgm"), NULL, 0, NULL);
 	  	  	            mciSendString(TEXT("close bgm"), NULL, 0, NULL);
-                    	PlaySound(TEXT("gameover.wav"), NULL, SND_ASYNC);
+                    	PlaySound(TEXT("sounds\\gameover.wav"), NULL, SND_ASYNC);
                         gameOver = true;
                         break;
                     }
@@ -634,7 +639,7 @@ void timer(int value) {
                     if (check_collision(birdX, birdY, birdSize, pipePositions[j], pipeGapY[j] - pipeGapSize - PIPE_HEIGHT / 2, PIPE_WIDTH, PIPE_HEIGHT, PIPE_DEPTH)) {
                     	mciSendString(TEXT("stop bgm"), NULL, 0, NULL);
  	 	 	 	 	 	 mciSendString(TEXT("close bgm"), NULL, 0, NULL);
-                    	 PlaySound(TEXT("gameover.wav"), NULL, SND_ASYNC);
+                    	 PlaySound(TEXT("sounds\\gameover.wav"), NULL, SND_ASYNC);
                         gameOver = true;
                         break;
                     }
@@ -645,7 +650,7 @@ void timer(int value) {
             if (!passedPipe[i] && pipePositions[i] < birdX - birdSize / 2) {
                 passedPipe[i] = true;
                 score++;
-                PlaySound(TEXT("score.wav"), NULL, SND_ASYNC);
+                PlaySound(TEXT("sounds\\score.wav"), NULL, SND_ASYNC);
                 
             }
         }
@@ -654,7 +659,7 @@ void timer(int value) {
         if (birdY - birdSize / 2 < -1.5f || birdY + birdSize / 2 > 1.5f) {
         	mciSendString(TEXT("stop bgm"), NULL, 0, NULL);
             mciSendString(TEXT("close bgm"), NULL, 0, NULL);
-     	    PlaySound(TEXT("gameover.wav"), NULL, SND_ASYNC);
+     	    PlaySound(TEXT("sounds\\gameover.wav"), NULL, SND_ASYNC);
             gameOver = true;
         }
     }
@@ -663,7 +668,7 @@ void timer(int value) {
     glutTimerFunc(16, timer, 0);
 }
 
-// Função para tratar eventos do teclado
+// FunÃ§Ã£o para tratar eventos do teclado
 void keyboard(unsigned char key, int x, int y) {
     switch (key) {
         case ' ':
@@ -677,22 +682,24 @@ void keyboard(unsigned char key, int x, int y) {
         case 'r': // Reiniciar o jogo
             if (gameOver) {
                 resetGame();
-                //abir musica e reproduzir em loop
-                mciSendString(TEXT("open \"music.wav\" type mpegvideo alias bgm"), NULL, 0, NULL);
-    			mciSendString(TEXT("play bgm repeat"), NULL, 0, NULL);
-    			
+                std::string musicPath = std::string(soundsPath) + "music.wav";  // Caminho completo para o arquivo de mÃºsica
+                mciSendString(TEXT("close bgm"), NULL, 0, NULL);
+
+                // Abrir mÃºsica e reproduzir em loop
+                mciSendString(TEXT(("open \"" + musicPath + "\" type mpegvideo alias bgm").c_str()), NULL, 0, NULL);
+                mciSendString(TEXT("play bgm repeat"), NULL, 0, NULL);
             }
             break;
     }
 }
 
-// Função para reiniciar o jogo
+// Funcao para reiniciar o jogo
 void resetGame(void) {
 	
     birdY = 0.0f;
     birdVelocity = 0.0f;
     birdX = -1.0f;
-    score = 0; // Reseta a pontuação ao reiniciar o jogo
+    score = 0; // Reseta a pontuacao ao reiniciar o jogo
 
     for (int i = 0; i < PIPE_COUNT; ++i) {
         pipePositions[i] = i * PIPE_SPACING + 1.0f;
