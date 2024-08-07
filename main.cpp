@@ -111,7 +111,6 @@ GLuint loadTexture(const char* filename) {
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR); // para filtrar e suavizar a imagem
     
-	
 	//liberar memï¿½ria alocada
     stbi_image_free(data);
     
@@ -135,7 +134,7 @@ int main(int argc, char** argv) {
 
     std::string musicPath = std::string(soundsPath) + "music.wav"; // Caminho completo para o arquivo de mÃºsica
     
-    mciSendString(TEXT("close bgm"), NULL, 0, NULL);
+    //mciSendString(TEXT("close bgm"), NULL, 0, NULL);
 
     // Reproduz a mÃºsica de fundo
     mciSendString(TEXT(("open \"" + musicPath + "\" type mpegvideo alias bgm").c_str()), NULL, 0, NULL);
@@ -160,12 +159,7 @@ void init_glut(const char *window_name, int argc, char** argv) {
     glutDisplayFunc(display);
     glutReshapeFunc(reshape);
     glutTimerFunc(16, timer, 0);
-    
-    //aplicar texturas nos canos e no background
-	pipeTexture = loadTexture("canos.png");
-	backgroundTexture = loadTexture("bg.png");
-	
-	
+    	
     glEnable(GL_DEPTH_TEST);
     initClouds();
 
@@ -207,12 +201,11 @@ void draw_background_square() {
 
     // Desenha um quadrado com a textura
     glBegin(GL_QUADS);
-    glTexCoord2f(0.0f, 1.0f); glVertex3f(-1.0f, -0.8f, -1.0f); // Vertice inferior esquerdo 
-    glTexCoord2f(1.0f, 1.0f); glVertex3f(1.0f, -0.8f, -1.0f); // Vertice inferior direito 
-    glTexCoord2f(1.0f, 0.0f); glVertex3f(1.0f, 1.0f, -1.0f); // Vertice superior direito
-    glTexCoord2f(0.0f, 0.0f); glVertex3f(-1.0f, 1.0f, -1.0f); // Vrtice superior esquerdo
+    glTexCoord2f(0.0f, 1.0f); glVertex3f(-2.0f, -0.8f, -1.0f); // Vértice inferior esquerdo 
+	glTexCoord2f(1.0f, 1.0f); glVertex3f(2.0f, -0.8f, -1.0f);  // Vértice inferior direito 
+	glTexCoord2f(1.0f, 0.0f); glVertex3f(2.0f, 1.0f, -1.0f);   // Vértice superior direito
+	glTexCoord2f(0.0f, 0.0f); glVertex3f(-2.0f, 1.0f, -1.0f);  // Vértice superior esquerdo
     glEnd();
-
     glEnable(GL_DEPTH_TEST); // Reativa o teste de profundidade apÃ³s desenhar o fundo
     
     glPopAttrib();
@@ -598,13 +591,20 @@ void display(void) {
     glutSwapBuffers();
 }
 
-// Funcao para redimensionar a janela
+// Funcao para redimensionar
 void reshape(int w, int h) {
+
+    // para cobrir a nova janela independente do tamanho
+    glViewport(0, 0, w, h);
+    // Muda para o modo de matriz de projeção e redefine a matriz
     glMatrixMode(GL_PROJECTION);
-    glLoadIdentity();
-    gluPerspective(60.0, (GLfloat)w / (GLfloat)h, 1.0, 100.0); 
+	glLoadIdentity();
+    // Define a perspectiva com a nova proporção de aspecto
+    gluPerspective(60.0, (GLfloat)w / (GLfloat)h, 1.0, 100.0);
     glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
 }
+
 
 // Funcao para atualizar a cena
 void timer(int value) {
@@ -701,10 +701,12 @@ void resetGame(void) {
     birdX = -1.0f;
     score = 0; // Reseta a pontuacao ao reiniciar o jogo
 
+	//redesenha os canos
     for (int i = 0; i < PIPE_COUNT; ++i) {
         pipePositions[i] = i * PIPE_SPACING + 1.0f;
         pipeGapY[i] = ((rand() % 100) / 100.0f) * 2.0f - 1.0f;
         passedPipe[i] = false; 
     }
+    //redefine o game para false
     gameOver = false;
 }
